@@ -19,6 +19,9 @@
     --ajz: #fa9000;
     --weather: #4f9dde;
     --cal: #57c17b;
+    --habit: #57c17b;
+    --habit-flame: #ffb347;
+    --accent-dim: #2d5138;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
   body {
@@ -29,9 +32,11 @@
     padding: env(safe-area-inset-top) 0 env(safe-area-inset-bottom);
     -webkit-font-smoothing: antialiased;
   }
+  .top-bar {
+    position: sticky; top: 0; z-index: 20;
+  }
   header {
     padding: 18px 16px 12px;
-    position: sticky; top: 0; z-index: 20;
     background: rgba(15,17,21,.85);
     backdrop-filter: blur(12px);
     border-bottom: 1px solid var(--line);
@@ -45,11 +50,16 @@
     margin-top: 8px; display: inline-flex; align-items: center; gap: 5px;
   }
   .refresh:active { background: var(--card-hover); }
+  .quote {
+    margin-top: 10px; font-size: .82rem; color: var(--muted);
+    font-style: italic; line-height: 1.45; max-width: 90%;
+  }
+  .quote b { color: var(--text); font-style: normal; font-weight: 600; }
+  .quote a { color: var(--muted); text-decoration: none; font-style: normal; opacity: .6; }
 
   /* Tab bar */
   nav {
     display: flex; gap: 6px; overflow-x: auto; padding: 10px 16px;
-    position: sticky; top: 74px; z-index: 19;
     background: rgba(15,17,21,.85); backdrop-filter: blur(12px);
     border-bottom: 1px solid var(--line); scrollbar-width: none;
   }
@@ -119,6 +129,37 @@
   }
   .cal-note a { color: var(--accent); }
 
+  /* Habits */
+  .habit { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 14px; margin-bottom: 12px; }
+  .habit-top { display: flex; align-items: center; gap: 12px; }
+  .check {
+    width: 42px; height: 42px; border-radius: 12px; flex-shrink: 0;
+    border: 2px solid var(--line); background: var(--bg);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.3rem; cursor: pointer; transition: all .15s; color: transparent;
+  }
+  .check.done { background: var(--habit); border-color: var(--habit); color: #0f1115; }
+  .check:active { transform: scale(.92); }
+  .habit-info { flex: 1; min-width: 0; }
+  .habit-name { font-size: 1rem; font-weight: 600; }
+  .habit-streak { font-size: .8rem; color: var(--muted); margin-top: 2px; display: flex; align-items: center; gap: 4px; }
+  .flame { color: var(--habit-flame); }
+  .del { background: none; border: none; color: var(--muted); font-size: 1.1rem; cursor: pointer; padding: 6px; opacity: .5; }
+  .del:active { opacity: 1; }
+  .grid { display: flex; gap: 4px; margin-top: 12px; flex-wrap: wrap; }
+  .cell { width: 15px; height: 15px; border-radius: 4px; background: var(--card-hover); border: 1px solid var(--line); }
+  .cell.on { background: var(--habit); border-color: var(--habit); }
+  .cell.today { box-shadow: 0 0 0 2px var(--accent-dim, #2d5138); }
+  .grid-label { font-size: .68rem; color: var(--muted); margin-top: 10px; text-transform: uppercase; letter-spacing: .5px; }
+  .add-row { display: flex; gap: 8px; margin-top: 8px; }
+  .add-row input { flex: 1; padding: 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--card); color: var(--text); font-size: .9rem; }
+  .add-row input::placeholder { color: var(--muted); }
+  .btn { padding: 12px 16px; border-radius: 10px; border: 1px solid var(--habit); background: var(--habit); color: #0f1115; font-weight: 600; font-size: .9rem; cursor: pointer; }
+  .btn:active { opacity: .85; }
+  .summary { text-align: center; color: var(--muted); font-size: .82rem; margin: 4px 0 18px; }
+  .summary b { color: var(--text); }
+  .empty { text-align: center; color: var(--muted); padding: 30px 16px; font-size: .9rem; background: var(--card); border: 1px dashed var(--line); border-radius: 14px; margin-bottom: 16px; }
+
   .loading, .error {
     text-align: center; color: var(--muted); padding: 30px 10px; font-size: .88rem;
   }
@@ -132,24 +173,28 @@
 </style>
 </head>
 <body>
+<div class="top-bar">
 <header>
   <div class="head-row">
     <h1>Daily</h1>
     <span class="date" id="date"></span>
   </div>
+  <div class="quote" id="quote"></div>
   <button class="refresh" id="refresh">↻ Refresh</button>
 </header>
 
 <nav id="tabs">
-  <button class="tab active" data-tab="bbc">BBC News</button>
+  <button class="tab active" data-tab="habits">Habits</button>
+  <button class="tab" data-tab="calendar">Calendar</button>
+  <button class="tab" data-tab="weather">Weather</button>
+  <button class="tab" data-tab="bbc">BBC News</button>
   <button class="tab" data-tab="sport">BBC Sport</button>
   <button class="tab" data-tab="ajz">Al Jazeera</button>
-  <button class="tab" data-tab="weather">Weather</button>
-  <button class="tab" data-tab="calendar">Calendar</button>
 </nav>
+</div>
 
 <main>
-  <section class="active" id="bbc">
+  <section id="bbc">
     <div class="sec-title"><span class="dot" style="background:var(--bbc)"></span>BBC News · Top Stories</div>
     <div id="bbc-feed"><div class="loading"><div class="spinner"></div>Loading headlines…</div></div>
   </section>
@@ -172,6 +217,16 @@
   <section id="calendar">
     <div class="sec-title"><span class="dot" style="background:var(--cal)"></span>Calendar</div>
     <div id="cal"></div>
+  </section>
+
+  <section class="active" id="habits">
+    <div class="sec-title"><span class="dot" style="background:var(--habit)"></span>Habits</div>
+    <div class="summary" id="hb-summary"></div>
+    <div id="hb-list"></div>
+    <div class="add-row">
+      <input id="hb-new" type="text" placeholder="New habit — e.g. Read 20 min" maxlength="40" />
+      <button class="btn" id="hb-add">Add</button>
+    </div>
   </section>
 </main>
 
@@ -199,6 +254,72 @@ const CORS_PROXIES = [
 /* ============ DATE ============ */
 document.getElementById("date").textContent =
   new Date().toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" });
+
+/* ============ DAILY QUOTE ============ */
+// Offline fallback set — guarantees the header is never empty if the network/API fails.
+const FALLBACK_QUOTES = [
+  ["The secret of getting ahead is getting started.", "Mark Twain"],
+  ["Well done is better than well said.", "Benjamin Franklin"],
+  ["What we know is a drop, what we don't know is an ocean.", "Isaac Newton"],
+  ["It always seems impossible until it's done.", "Nelson Mandela"],
+  ["Simplicity is the ultimate sophistication.", "Leonardo da Vinci"],
+  ["Whether you think you can or you can't, you're right.", "Henry Ford"],
+  ["The best way out is always through.", "Robert Frost"],
+  ["Discipline equals freedom.", "Jocko Willink"],
+  ["A goal without a plan is just a wish.", "Antoine de Saint-Exupéry"],
+  ["Do the hard jobs first. The easy jobs will take care of themselves.", "Dale Carnegie"],
+  ["Success is not final, failure is not fatal.", "Winston Churchill"],
+  ["Action is the foundational key to all success.", "Pablo Picasso"],
+  ["Start where you are. Use what you have. Do what you can.", "Arthur Ashe"],
+  ["Quality is not an act, it is a habit.", "Aristotle"]
+];
+function dayIndex() {
+  // Days since epoch — stable per calendar day, rotates the fallback set.
+  return Math.floor(Date.now() / 864e5);
+}
+function fallbackQuote() {
+  return FALLBACK_QUOTES[dayIndex() % FALLBACK_QUOTES.length];
+}
+function renderQuote(text, author) {
+  document.getElementById("quote").innerHTML =
+    `“${text}” <b>— ${author}</b> <a href="https://zenquotes.io" target="_blank" rel="noopener">·</a>`;
+}
+async function loadQuote() {
+  const el = document.getElementById("quote");
+  const todayKey = new Date().toDateString();
+  // Use cached quote if already fetched today
+  try {
+    const cached = JSON.parse(localStorage.getItem("daily_quote") || "null");
+    if (cached && cached.day === todayKey) { renderQuote(cached.q, cached.a); return; }
+  } catch (e) {}
+  // Show fallback immediately so header is never blank, then try to upgrade to a live quote
+  const [fq, fa] = fallbackQuote();
+  renderQuote(fq, fa);
+  const api = "https://zenquotes.io/api/today";
+  const tryParse = raw => {
+    const arr = JSON.parse(raw);
+    if (Array.isArray(arr) && arr[0] && arr[0].q) return [arr[0].q.trim(), arr[0].a || "Unknown"];
+    return null;
+  };
+  // Attempt: direct, then through the proxy chain
+  const attempts = [
+    () => fetchWithTimeout(api, 6000).then(r => r.text()),
+    ...CORS_PROXIES.map(p => () => fetchWithTimeout(p.build(api), 6000)
+      .then(r => p.mode === "wrapped" ? r.json().then(j => j.contents) : r.text()))
+  ];
+  for (const attempt of attempts) {
+    try {
+      const raw = await attempt();
+      const parsed = tryParse(raw);
+      if (parsed) {
+        renderQuote(parsed[0], parsed[1]);
+        try { localStorage.setItem("daily_quote", JSON.stringify({ day: todayKey, q: parsed[0], a: parsed[1] })); } catch (e) {}
+        return;
+      }
+    } catch (e) {}
+  }
+  // If all fail, the fallback is already showing — nothing more to do.
+}
 
 /* ============ TABS ============ */
 document.getElementById("tabs").addEventListener("click", e => {
@@ -495,6 +616,95 @@ function renderCalendar(events, url) {
   document.getElementById("ics-manage").onclick = () => { el.innerHTML = calSettingsHtml(url); wireCalSettings(); };
 }
 
+/* ============ HABITS ============ */
+// Same storage key as the standalone tracker, so existing data carries over on this browser.
+const HB_KEY = "habits_v1";
+function hbLoad() { try { return JSON.parse(localStorage.getItem(HB_KEY)) || []; } catch (e) { return []; } }
+function hbSave(h) { try { localStorage.setItem(HB_KEY, JSON.stringify(h)); } catch (e) {} }
+let hbHabits = hbLoad();
+
+function hbDayKey(d) {
+  return d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,"0") + "-" + String(d.getDate()).padStart(2,"0");
+}
+const HB_TODAY = hbDayKey(new Date());
+function hbDaysAgo(n) { const d = new Date(); d.setDate(d.getDate() - n); return hbDayKey(d); }
+
+function hbStreak(done) {
+  const set = new Set(done);
+  let streak = 0;
+  let start = set.has(HB_TODAY) ? 0 : 1;
+  if (start === 1 && !set.has(hbDaysAgo(1))) return 0;
+  for (let i = start; i < 400; i++) {
+    if (set.has(hbDaysAgo(i))) streak++; else break;
+  }
+  return streak;
+}
+function hbEscape(s) { return s.replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+
+function hbRender() {
+  const list = document.getElementById("hb-list");
+  const summary = document.getElementById("hb-summary");
+  if (!hbHabits.length) {
+    list.innerHTML = `<div class="empty">No habits yet.<br>Add one below to start a streak.</div>`;
+    summary.textContent = "";
+    return;
+  }
+  const doneToday = hbHabits.filter(h => h.done.includes(HB_TODAY)).length;
+  summary.innerHTML = `<b>${doneToday}</b> of <b>${hbHabits.length}</b> done today`;
+  list.innerHTML = hbHabits.map((h, idx) => {
+    const isDone = h.done.includes(HB_TODAY);
+    const streak = hbStreak(h.done);
+    const doneSet = new Set(h.done);
+    let cells = "";
+    for (let i = 27; i >= 0; i--) {
+      const k = hbDaysAgo(i);
+      const cls = (doneSet.has(k) ? "on " : "") + (i === 0 ? "today" : "");
+      cells += `<div class="cell ${cls}"></div>`;
+    }
+    return `
+      <div class="habit">
+        <div class="habit-top">
+          <div class="check ${isDone ? "done" : ""}" data-hb-toggle="${idx}">✓</div>
+          <div class="habit-info">
+            <div class="habit-name">${hbEscape(h.name)}</div>
+            <div class="habit-streak">
+              ${streak > 0 ? `<span class="flame">🔥</span> ${streak}-day streak` : "No streak yet"}
+            </div>
+          </div>
+          <button class="del" data-hb-del="${idx}" title="Delete">✕</button>
+        </div>
+        <div class="grid">${cells}</div>
+        <div class="grid-label">Last 4 weeks</div>
+      </div>`;
+  }).join("");
+}
+
+document.getElementById("hb-list").addEventListener("click", e => {
+  const toggle = e.target.closest("[data-hb-toggle]");
+  const del = e.target.closest("[data-hb-del]");
+  if (toggle) {
+    const h = hbHabits[+toggle.dataset.hbToggle];
+    const i = h.done.indexOf(HB_TODAY);
+    if (i === -1) h.done.push(HB_TODAY); else h.done.splice(i, 1);
+    hbSave(hbHabits); hbRender();
+  } else if (del) {
+    const h = hbHabits[+del.dataset.hbDel];
+    if (confirm(`Delete "${h.name}"? Its history will be lost.`)) {
+      hbHabits.splice(+del.dataset.hbDel, 1);
+      hbSave(hbHabits); hbRender();
+    }
+  }
+});
+function hbAdd() {
+  const input = document.getElementById("hb-new");
+  const name = input.value.trim();
+  if (!name) return;
+  hbHabits.push({ name, done: [] });
+  hbSave(hbHabits); input.value = ""; hbRender();
+}
+document.getElementById("hb-add").addEventListener("click", hbAdd);
+document.getElementById("hb-new").addEventListener("keydown", e => { if (e.key === "Enter") hbAdd(); });
+
 /* ============ LOAD ALL ============ */
 function loadAll() {
   loadNews("bbc", "bbc-feed", "BBC News");
@@ -505,6 +715,8 @@ function loadAll() {
 }
 document.getElementById("refresh").addEventListener("click", loadAll);
 loadAll();
+loadQuote();
+hbRender();
 </script>
 </body>
 </html>
