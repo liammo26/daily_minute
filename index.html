@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#0f1115">
+<title>Daily</title>
+<style>
+  :root {
+    --bg: #0f1115;
+    --card: #191c22;
+    --card-hover: #21252d;
+    --text: #e8eaed;
+    --muted: #9aa0aa;
+    --line: #2a2e37;
+    --accent: #4f9dde;
+    --bbc: #bb1919;
+    --sport: #ffd230;
+    --ajz: #fa9000;
+    --weather: #4f9dde;
+    --cal: #57c17b;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.4;
+    padding: env(safe-area-inset-top) 0 env(safe-area-inset-bottom);
+    -webkit-font-smoothing: antialiased;
+  }
+  header {
+    padding: 18px 16px 12px;
+    position: sticky; top: 0; z-index: 20;
+    background: rgba(15,17,21,.85);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--line);
+  }
+  .head-row { display: flex; justify-content: space-between; align-items: baseline; }
+  h1 { font-size: 1.5rem; font-weight: 700; letter-spacing: -.5px; }
+  .date { color: var(--muted); font-size: .85rem; }
+  .refresh {
+    background: var(--card); border: 1px solid var(--line); color: var(--muted);
+    border-radius: 20px; padding: 5px 12px; font-size: .78rem; cursor: pointer;
+    margin-top: 8px; display: inline-flex; align-items: center; gap: 5px;
+  }
+  .refresh:active { background: var(--card-hover); }
+
+  /* Tab bar */
+  nav {
+    display: flex; gap: 6px; overflow-x: auto; padding: 10px 16px;
+    position: sticky; top: 74px; z-index: 19;
+    background: rgba(15,17,21,.85); backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--line); scrollbar-width: none;
+  }
+  nav::-webkit-scrollbar { display: none; }
+  .tab {
+    white-space: nowrap; padding: 7px 14px; border-radius: 18px;
+    background: var(--card); border: 1px solid var(--line); color: var(--muted);
+    font-size: .85rem; font-weight: 500; cursor: pointer; flex-shrink: 0;
+  }
+  .tab.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+  main { padding: 14px 16px 40px; max-width: 620px; margin: 0 auto; }
+  section { display: none; }
+  section.active { display: block; animation: fade .25s ease; }
+  @keyframes fade { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
+  .sec-title {
+    display: flex; align-items: center; gap: 8px;
+    font-size: .95rem; font-weight: 600; margin: 4px 0 12px; color: var(--muted);
+    text-transform: uppercase; letter-spacing: .5px; font-size: .72rem;
+  }
+  .dot { width: 8px; height: 8px; border-radius: 50%; }
+
+  /* News cards */
+  .card {
+    display: block; text-decoration: none; color: inherit;
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: 14px; padding: 14px; margin-bottom: 10px;
+    transition: background .15s;
+  }
+  .card:active { background: var(--card-hover); }
+  .card.lead { border-left: 3px solid var(--accent); }
+  .card-title { font-size: .98rem; font-weight: 600; margin-bottom: 5px; }
+  .card.lead .card-title { font-size: 1.08rem; }
+  .card-desc { font-size: .85rem; color: var(--muted); margin-bottom: 7px;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .card-meta { font-size: .72rem; color: var(--muted); display: flex; gap: 8px; align-items: center; }
+
+  /* Weather */
+  .wx-now {
+    background: linear-gradient(135deg, #1a2733, #191c22);
+    border: 1px solid var(--line); border-radius: 16px; padding: 18px; margin-bottom: 12px;
+  }
+  .wx-top { display: flex; justify-content: space-between; align-items: center; }
+  .wx-temp { font-size: 3rem; font-weight: 700; letter-spacing: -2px; }
+  .wx-icon { font-size: 3rem; }
+  .wx-desc { color: var(--muted); font-size: .9rem; margin-top: 2px; }
+  .wx-stats { display: flex; gap: 18px; margin-top: 14px; font-size: .82rem; color: var(--muted); flex-wrap: wrap; }
+  .wx-stats b { color: var(--text); font-weight: 600; }
+  table.wx { width: 100%; border-collapse: collapse; font-size: .85rem; }
+  table.wx th { text-align: left; color: var(--muted); font-weight: 500; padding: 8px 6px; font-size: .72rem; text-transform: uppercase; border-bottom: 1px solid var(--line); }
+  table.wx td { padding: 9px 6px; border-bottom: 1px solid var(--line); }
+  table.wx tr:last-child td { border-bottom: none; }
+  .wx-em { font-size: 1.1rem; }
+
+  /* Calendar */
+  .cal-day { font-size: .78rem; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; margin: 16px 0 8px; }
+  .event {
+    display: flex; gap: 12px; background: var(--card); border: 1px solid var(--line);
+    border-radius: 12px; padding: 12px; margin-bottom: 8px;
+  }
+  .event-time { font-size: .8rem; color: var(--accent); font-weight: 600; min-width: 52px; }
+  .event-title { font-size: .92rem; }
+  .cal-note {
+    background: var(--card); border: 1px dashed var(--line); border-radius: 12px;
+    padding: 16px; font-size: .85rem; color: var(--muted); text-align: center;
+  }
+  .cal-note a { color: var(--accent); }
+
+  .loading, .error {
+    text-align: center; color: var(--muted); padding: 30px 10px; font-size: .88rem;
+  }
+  .spinner {
+    width: 22px; height: 22px; border: 2px solid var(--line); border-top-color: var(--accent);
+    border-radius: 50%; animation: spin .8s linear infinite; margin: 0 auto 12px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .error a { color: var(--accent); }
+  footer { text-align: center; color: var(--muted); font-size: .72rem; padding: 20px 16px 0; }
+</style>
+</head>
+<body>
+<header>
+  <div class="head-row">
+    <h1>Daily</h1>
+    <span class="date" id="date"></span>
+  </div>
+  <button class="refresh" id="refresh">↻ Refresh</button>
+</header>
+
+<nav id="tabs">
+  <button class="tab active" data-tab="bbc">BBC News</button>
+  <button class="tab" data-tab="sport">BBC Sport</button>
+  <button class="tab" data-tab="ajz">Al Jazeera</button>
+  <button class="tab" data-tab="weather">Weather</button>
+  <button class="tab" data-tab="calendar">Calendar</button>
+</nav>
+
+<main>
+  <section class="active" id="bbc">
+    <div class="sec-title"><span class="dot" style="background:var(--bbc)"></span>BBC News · Top Stories</div>
+    <div id="bbc-feed"><div class="loading"><div class="spinner"></div>Loading headlines…</div></div>
+  </section>
+
+  <section id="sport">
+    <div class="sec-title"><span class="dot" style="background:var(--sport)"></span>BBC Sport</div>
+    <div id="sport-feed"><div class="loading"><div class="spinner"></div>Loading headlines…</div></div>
+  </section>
+
+  <section id="ajz">
+    <div class="sec-title"><span class="dot" style="background:var(--ajz)"></span>Al Jazeera</div>
+    <div id="ajz-feed"><div class="loading"><div class="spinner"></div>Loading headlines…</div></div>
+  </section>
+
+  <section id="weather">
+    <div class="sec-title"><span class="dot" style="background:var(--weather)"></span>Weather · Edinburgh</div>
+    <div id="wx"><div class="loading"><div class="spinner"></div>Loading forecast…</div></div>
+  </section>
+
+  <section id="calendar">
+    <div class="sec-title"><span class="dot" style="background:var(--cal)"></span>Calendar</div>
+    <div id="cal"></div>
+  </section>
+</main>
+
+<footer>Pull-to-refresh or tap ↻ · Updates on load</footer>
+
+<script>
+/* ============ CONFIG ============ */
+const FEEDS = {
+  bbc:   { url: "https://feeds.bbci.co.uk/news/rss.xml",        lead: true },
+  sport: { url: "https://feeds.bbci.co.uk/sport/rss.xml",       lead: true },
+  ajz:   { url: "https://www.aljazeera.com/xml/rss/all.xml",    lead: true }
+};
+// Edinburgh coordinates
+const LAT = 55.9533, LON = -3.1883;
+// Fallback chain of CORS proxies. Each entry says how to build the URL and how to read the body.
+// "text" = proxy returns the raw XML; "wrapped" = proxy returns {contents: "<xml>"}.
+const CORS_PROXIES = [
+  { build: u => `https://corsproxy.io/?url=${encodeURIComponent(u)}`,            mode: "text" },
+  { build: u => `https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`,   mode: "text" },
+  { build: u => `https://api.allorigins.win/get?url=${encodeURIComponent(u)}`,   mode: "wrapped" },
+  { build: u => `https://thingproxy.freeboard.io/fetch/${u}`,                    mode: "text" },
+  { build: u => `https://api.codetabs.com/v1/proxy/?quest=${encodeURIComponent(u)}`, mode: "text" }
+];
+
+/* ============ DATE ============ */
+document.getElementById("date").textContent =
+  new Date().toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" });
+
+/* ============ TABS ============ */
+document.getElementById("tabs").addEventListener("click", e => {
+  const btn = e.target.closest(".tab"); if (!btn) return;
+  document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
+  document.querySelectorAll("section").forEach(s => s.classList.remove("active"));
+  btn.classList.add("active");
+  document.getElementById(btn.dataset.tab).classList.add("active");
+  window.scrollTo({ top: 0, behavior: "smooth" });
+});
+
+/* ============ HELPERS ============ */
+function timeAgo(dateStr) {
+  const d = new Date(dateStr); if (isNaN(d)) return "";
+  const mins = Math.floor((Date.now() - d) / 60000);
+  if (mins < 1) return "just now";
+  if (mins < 60) return mins + "m ago";
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return hrs + "h ago";
+  return Math.floor(hrs / 24) + "d ago";
+}
+function stripHtml(s) { const t = document.createElement("div"); t.innerHTML = s || ""; return t.textContent.trim(); }
+
+function fetchWithTimeout(u, ms = 8000) {
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), ms);
+  return fetch(u, { signal: ctrl.signal }).finally(() => clearTimeout(t));
+}
+
+function parseFeedXml(xmlText) {
+  const xml = new DOMParser().parseFromString(xmlText, "text/xml");
+  if (xml.querySelector("parsererror")) throw new Error("bad xml");
+  // RSS <item> or Atom <entry>
+  let nodes = [...xml.querySelectorAll("item")];
+  if (!nodes.length) nodes = [...xml.querySelectorAll("entry")];
+  if (!nodes.length) throw new Error("no items");
+  return nodes.slice(0, 15).map(it => {
+    const get = tag => it.querySelector(tag)?.textContent?.trim() || "";
+    // Atom links live in an attribute
+    let link = get("link");
+    if (!link) link = it.querySelector("link")?.getAttribute("href") || "";
+    return {
+      title: get("title"),
+      link,
+      desc: stripHtml(get("description") || get("summary")),
+      date: get("pubDate") || get("published") || get("updated")
+    };
+  });
+}
+
+async function fetchFeed(url) {
+  let lastErr;
+  for (const p of CORS_PROXIES) {
+    try {
+      const r = await fetchWithTimeout(p.build(url));
+      if (!r.ok) { lastErr = new Error("HTTP " + r.status); continue; }
+      let xmlText;
+      if (p.mode === "wrapped") {
+        const j = await r.json();
+        xmlText = j.contents;
+      } else {
+        xmlText = await r.text();
+      }
+      if (!xmlText || xmlText.length < 100) { lastErr = new Error("empty"); continue; }
+      const items = parseFeedXml(xmlText);
+      if (items.length) return items;
+    } catch (e) { lastErr = e; }
+  }
+  throw lastErr || new Error("all proxies failed");
+}
+
+function renderNews(id, items, lead, label) {
+  const el = document.getElementById(id);
+  if (!items.length) { el.innerHTML = `<div class="error">No items right now.</div>`; return; }
+  el.innerHTML = items.map((it, i) => `
+    <a class="card ${lead && i === 0 ? "lead" : ""}" href="${it.link}" target="_blank" rel="noopener">
+      <div class="card-title">${it.title}</div>
+      ${it.desc ? `<div class="card-desc">${it.desc}</div>` : ""}
+      <div class="card-meta"><span>${label}</span>${it.date ? `<span>· ${timeAgo(it.date)}</span>` : ""}</div>
+    </a>`).join("");
+}
+
+async function loadNews(key, id, label) {
+  const el = document.getElementById(id);
+  try {
+    const items = await fetchFeed(FEEDS[key].url);
+    renderNews(id, items, FEEDS[key].lead, label);
+  } catch (e) {
+    el.innerHTML = `<div class="error">Couldn't load feed.<br><a href="${FEEDS[key].url}" target="_blank">Open source feed →</a></div>`;
+  }
+}
+
+/* ============ WEATHER (Open-Meteo, no key) ============ */
+const WMO = {
+  0:["☀️","Clear"],1:["🌤️","Mainly clear"],2:["⛅","Partly cloudy"],3:["☁️","Overcast"],
+  45:["🌫️","Fog"],48:["🌫️","Rime fog"],51:["🌦️","Light drizzle"],53:["🌦️","Drizzle"],55:["🌧️","Heavy drizzle"],
+  61:["🌦️","Light rain"],63:["🌧️","Rain"],65:["🌧️","Heavy rain"],66:["🌨️","Freezing rain"],67:["🌨️","Freezing rain"],
+  71:["🌨️","Light snow"],73:["🌨️","Snow"],75:["❄️","Heavy snow"],77:["❄️","Snow grains"],
+  80:["🌦️","Showers"],81:["🌧️","Showers"],82:["⛈️","Heavy showers"],
+  85:["🌨️","Snow showers"],86:["❄️","Snow showers"],95:["⛈️","Thunderstorm"],96:["⛈️","Storm w/ hail"],99:["⛈️","Storm w/ hail"]
+};
+function wx(code){ return WMO[code] || ["🌡️","—"]; }
+
+async function loadWeather() {
+  const el = document.getElementById("wx");
+  const url = `https://api.open-meteo.com/v1/forecast?latitude=${LAT}&longitude=${LON}`
+    + `&current=temperature_2m,apparent_temperature,weather_code,wind_speed_10m,relative_humidity_2m`
+    + `&hourly=temperature_2m,weather_code,precipitation_probability`
+    + `&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max`
+    + `&timezone=Europe/London&forecast_days=5`;
+  try {
+    const r = await fetch(url); const d = await r.json();
+    const c = d.current, [ci, cd] = wx(c.weather_code);
+    // next 8 hourly from current hour
+    const nowIdx = d.hourly.time.findIndex(t => new Date(t) > new Date()) - 1;
+    const hStart = Math.max(0, nowIdx);
+    let hourlyRows = "";
+    for (let i = hStart; i < hStart + 8 && i < d.hourly.time.length; i++) {
+      const [hi] = wx(d.hourly.weather_code[i]);
+      const hr = new Date(d.hourly.time[i]).toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"});
+      hourlyRows += `<tr><td>${hr}</td><td class="wx-em">${hi}</td><td>${Math.round(d.hourly.temperature_2m[i])}°</td><td>${d.hourly.precipitation_probability[i]}%</td></tr>`;
+    }
+    let dailyRows = "";
+    d.daily.time.forEach((t, i) => {
+      const [di] = wx(d.daily.weather_code[i]);
+      const day = i === 0 ? "Today" : new Date(t).toLocaleDateString("en-GB",{weekday:"short"});
+      dailyRows += `<tr><td>${day}</td><td class="wx-em">${di}</td><td><b>${Math.round(d.daily.temperature_2m_max[i])}°</b> / ${Math.round(d.daily.temperature_2m_min[i])}°</td><td>${d.daily.precipitation_probability_max[i]}%</td></tr>`;
+    });
+    el.innerHTML = `
+      <div class="wx-now">
+        <div class="wx-top">
+          <div>
+            <div class="wx-temp">${Math.round(c.temperature_2m)}°</div>
+            <div class="wx-desc">${cd} · feels ${Math.round(c.apparent_temperature)}°</div>
+          </div>
+          <div class="wx-icon">${ci}</div>
+        </div>
+        <div class="wx-stats">
+          <span>💨 <b>${Math.round(c.wind_speed_10m)}</b> km/h</span>
+          <span>💧 <b>${c.relative_humidity_2m}%</b></span>
+        </div>
+      </div>
+      <div class="sec-title" style="margin-top:8px">Next hours</div>
+      <div class="card" style="padding:6px 12px">
+        <table class="wx"><thead><tr><th>Time</th><th></th><th>Temp</th><th>Rain</th></tr></thead><tbody>${hourlyRows}</tbody></table>
+      </div>
+      <div class="sec-title" style="margin-top:16px">5-day</div>
+      <div class="card" style="padding:6px 12px">
+        <table class="wx"><thead><tr><th>Day</th><th></th><th>High / Low</th><th>Rain</th></tr></thead><tbody>${dailyRows}</tbody></table>
+      </div>`;
+  } catch (e) {
+    el.innerHTML = `<div class="error">Couldn't load weather.</div>`;
+  }
+}
+
+/* ============ CALENDAR ============ */
+// Paste a public .ics URL below to pull real events (e.g. Google Calendar "secret address in iCal format").
+const ICS_URL = ""; // <-- optional
+async function loadCalendar() {
+  const el = document.getElementById("cal");
+  if (!ICS_URL) {
+    el.innerHTML = `<div class="cal-note">
+      No calendar connected yet.<br><br>
+      To show your events: open Google Calendar → Settings → your calendar →
+      <b>Secret address in iCal format</b>, copy the link, and paste it into the
+      <code>ICS_URL</code> value near the bottom of this file.
+    </div>`;
+    return;
+  }
+  try {
+    const r = await fetch(RSS_PROXIES[1](ICS_URL));
+    const j = await r.json();
+    const events = parseICS(j.contents);
+    renderCalendar(events);
+  } catch (e) {
+    el.innerHTML = `<div class="cal-note">Couldn't load calendar. Check the iCal URL is public.</div>`;
+  }
+}
+function parseICS(text) {
+  const out = []; const blocks = text.split("BEGIN:VEVENT").slice(1);
+  const now = new Date(); const horizon = new Date(now.getTime() + 14*864e5);
+  for (const b of blocks) {
+    const g = re => (b.match(re) || [,""])[1].trim();
+    const summary = g(/SUMMARY:(.*)/);
+    const dt = g(/DTSTART[^:]*:(.*)/);
+    if (!dt) continue;
+    const d = icsDate(dt);
+    if (d >= new Date(now.toDateString()) && d <= horizon) out.push({ summary, date: d, allDay: dt.length <= 8 });
+  }
+  return out.sort((a,b) => a.date - b.date).slice(0, 20);
+}
+function icsDate(s) {
+  if (s.length <= 8) return new Date(+s.slice(0,4), +s.slice(4,6)-1, +s.slice(6,8));
+  return new Date(Date.UTC(+s.slice(0,4), +s.slice(4,6)-1, +s.slice(6,8), +s.slice(9,11), +s.slice(11,13)));
+}
+function renderCalendar(events) {
+  const el = document.getElementById("cal");
+  if (!events.length) { el.innerHTML = `<div class="cal-note">No upcoming events in the next 2 weeks.</div>`; return; }
+  let html = ""; let curDay = "";
+  events.forEach(ev => {
+    const dayKey = ev.date.toLocaleDateString("en-GB",{weekday:"long",day:"numeric",month:"long"});
+    if (dayKey !== curDay) { html += `<div class="cal-day">${dayKey}</div>`; curDay = dayKey; }
+    const time = ev.allDay ? "All day" : ev.date.toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"});
+    html += `<div class="event"><div class="event-time">${time}</div><div class="event-title">${ev.summary}</div></div>`;
+  });
+  el.innerHTML = html;
+}
+
+/* ============ LOAD ALL ============ */
+function loadAll() {
+  loadNews("bbc", "bbc-feed", "BBC News");
+  loadNews("sport", "sport-feed", "BBC Sport");
+  loadNews("ajz", "ajz-feed", "Al Jazeera");
+  loadWeather();
+  loadCalendar();
+}
+document.getElementById("refresh").addEventListener("click", loadAll);
+loadAll();
+</script>
+</body>
+</html>
