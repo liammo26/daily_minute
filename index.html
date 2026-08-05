@@ -33,6 +33,7 @@
     --accent: #4f9dde;
     --accent-dim: #2d5138;
     --header-bg: rgba(15,17,21,.85);
+    --wx-grad: linear-gradient(135deg, #1a2733, #191c22);
     /* Per-section tint of the page background — subtle in dark mode */
     --section-tint: transparent;
     --tab-active-text: #fff;
@@ -48,6 +49,7 @@
     --accent: #2f8fd6;
     --accent-dim: #bfe0cb;
     --header-bg: rgba(255,255,255,.9);
+    --wx-grad: linear-gradient(135deg, #e3f0fb, #ffffff);
     --section-tint: transparent;
     --tab-active-text: #fff;
     /* Punchier brand colours for light mode */
@@ -169,7 +171,7 @@
 
   /* Weather */
   .wx-now {
-    background: linear-gradient(135deg, #1a2733, #191c22);
+    background: var(--wx-grad);
     border: 1px solid var(--line); border-radius: 16px; padding: 18px; margin-bottom: 12px;
   }
   .wx-top { display: flex; justify-content: space-between; align-items: center; }
