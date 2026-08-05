@@ -417,14 +417,59 @@ async function loadQuote() {
 }
 
 /* ============ TABS ============ */
-document.getElementById("tabs").addEventListener("click", e => {
-  const btn = e.target.closest(".tab"); if (!btn) return;
+const TAB_ORDER = ["habits", "calendar", "weather", "bbc", "sport", "ajz"];
+function activateTab(name) {
   document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
   document.querySelectorAll("section").forEach(s => s.classList.remove("active"));
+  const btn = document.querySelector(`.tab[data-tab="${name}"]`);
+  const sec = document.getElementById(name);
+  if (!btn || !sec) return;
   btn.classList.add("active");
-  document.getElementById(btn.dataset.tab).classList.add("active");
+  sec.classList.add("active");
+  btn.scrollIntoView({ inline: "center", block: "nearest", behavior: "smooth" });
   window.scrollTo({ top: 0, behavior: "smooth" });
+}
+function currentTabIndex() {
+  const active = document.querySelector(".tab.active");
+  return active ? TAB_ORDER.indexOf(active.dataset.tab) : 0;
+}
+function moveTab(dir) {
+  const n = TAB_ORDER.length;
+  const next = (currentTabIndex() + dir + n) % n;  // wraps around
+  activateTab(TAB_ORDER[next]);
+}
+
+document.getElementById("tabs").addEventListener("click", e => {
+  const btn = e.target.closest(".tab"); if (!btn) return;
+  activateTab(btn.dataset.tab);
 });
+
+/* ============ SWIPE TO CHANGE TAB ============ */
+(function () {
+  let startX = 0, startY = 0, tracking = false;
+  const THRESHOLD = 55;   // min horizontal distance (px) to count as a swipe
+  const main = document.querySelector("main");
+
+  main.addEventListener("touchstart", e => {
+    // Ignore multi-touch (pinch/zoom) and swipes starting on horizontally-scrollable bits
+    if (e.touches.length !== 1) { tracking = false; return; }
+    if (e.target.closest("nav, table, input")) { tracking = false; return; }
+    startX = e.touches[0].clientX;
+    startY = e.touches[0].clientY;
+    tracking = true;
+  }, { passive: true });
+
+  main.addEventListener("touchend", e => {
+    if (!tracking) return;
+    tracking = false;
+    const dx = e.changedTouches[0].clientX - startX;
+    const dy = e.changedTouches[0].clientY - startY;
+    // Only act on a deliberate, mostly-horizontal swipe (lets vertical scrolling pass through)
+    if (Math.abs(dx) < THRESHOLD) return;
+    if (Math.abs(dx) < Math.abs(dy) * 1.5) return;
+    moveTab(dx < 0 ? 1 : -1);   // swipe left → next tab, right → previous
+  }, { passive: true });
+})();
 
 /* ============ HELPERS ============ */
 function timeAgo(dateStr) {
