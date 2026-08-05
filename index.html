@@ -307,7 +307,7 @@ async function loadWeather() {
   const url = `https://api.open-meteo.com/v1/forecast?latitude=${LAT}&longitude=${LON}`
     + `&current=temperature_2m,apparent_temperature,weather_code,wind_speed_10m,relative_humidity_2m`
     + `&hourly=temperature_2m,weather_code,precipitation_probability`
-    + `&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max`
+    + `&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,sunrise,sunset`
     + `&timezone=Europe/London&forecast_days=5`;
   try {
     const r = await fetch(url); const d = await r.json();
@@ -327,6 +327,31 @@ async function loadWeather() {
       const day = i === 0 ? "Today" : new Date(t).toLocaleDateString("en-GB",{weekday:"short"});
       dailyRows += `<tr><td>${day}</td><td class="wx-em">${di}</td><td><b>${Math.round(d.daily.temperature_2m_max[i])}°</b> / ${Math.round(d.daily.temperature_2m_min[i])}°</td><td>${d.daily.precipitation_probability_max[i]}%</td></tr>`;
     });
+
+    // --- Daylight (remaining) ---
+    const sunrise = new Date(d.daily.sunrise[0]);
+    const sunset  = new Date(d.daily.sunset[0]);
+    const nowT = new Date();
+    const fmt = dt => dt.toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"});
+    const dur = ms => {
+      const m = Math.max(0, Math.round(ms/60000));
+      const h = Math.floor(m/60);
+      return h > 0 ? `${h}h ${m%60}m` : `${m%60}m`;
+    };
+    let daylightHtml;
+    if (nowT < sunrise) {
+      daylightHtml = `<div class="wx-temp" style="font-size:1.6rem">Not up yet</div>
+        <div class="wx-desc">Sunrise ${fmt(sunrise)} · sets ${fmt(sunset)}</div>`;
+    } else if (nowT > sunset) {
+      // remaining daylight for tomorrow, if we have it
+      const nextRise = d.daily.sunrise[1] ? new Date(d.daily.sunrise[1]) : null;
+      daylightHtml = `<div class="wx-temp" style="font-size:1.6rem">After dark</div>
+        <div class="wx-desc">Set ${fmt(sunset)}${nextRise ? ` · rises ${fmt(nextRise)}` : ""}</div>`;
+    } else {
+      const remaining = dur(sunset - nowT);
+      daylightHtml = `<div class="wx-temp" style="font-size:1.9rem">${remaining}</div>
+        <div class="wx-desc">of daylight left · sunset ${fmt(sunset)}</div>`;
+    }
     el.innerHTML = `
       <div class="wx-now">
         <div class="wx-top">
@@ -340,6 +365,10 @@ async function loadWeather() {
           <span>💨 <b>${Math.round(c.wind_speed_10m)}</b> km/h</span>
           <span>💧 <b>${c.relative_humidity_2m}%</b></span>
         </div>
+      </div>
+      <div class="wx-now" style="display:flex;align-items:center;gap:14px">
+        <div class="wx-icon" style="font-size:2.2rem">🌇</div>
+        <div>${daylightHtml}</div>
       </div>
       <div class="sec-title" style="margin-top:8px">Next hours</div>
       <div class="card" style="padding:6px 12px">
@@ -355,48 +384,106 @@ async function loadWeather() {
 }
 
 /* ============ CALENDAR ============ */
-// Paste a public .ics URL below to pull real events (e.g. Google Calendar "secret address in iCal format").
-const ICS_URL = ""; // <-- optional
+// The iCal URL is stored ONLY in this browser (localStorage) — never in the repo.
+const CAL_KEY = "dashboard_ics_url";
+function getCalUrl() { try { return localStorage.getItem(CAL_KEY) || ""; } catch (e) { return ""; } }
+
+function calSettingsHtml(prefill) {
+  return `<div class="cal-note" style="text-align:left">
+      <b>Connect your calendar</b><br><br>
+      In Google Calendar (on desktop): Settings → click your calendar in the left list →
+      scroll to <b>Secret address in iCal format</b> → copy that link.<br>
+      Apple/Outlook calendars also give a public/shared <b>.ics</b> link.<br><br>
+      Paste it here — it's saved on this device only:
+      <input id="ics-input" type="url" placeholder="https://calendar.google.com/…/basic.ics"
+        value="${prefill || ""}"
+        style="width:100%;margin-top:10px;padding:10px;border-radius:8px;border:1px solid var(--line);background:var(--bg);color:var(--text);font-size:.85rem" />
+      <div style="display:flex;gap:8px;margin-top:10px">
+        <button id="ics-save" class="refresh" style="margin:0;flex:1;justify-content:center;background:var(--accent);color:#fff;border-color:var(--accent)">Save & load</button>
+        ${prefill ? `<button id="ics-clear" class="refresh" style="margin:0">Remove</button>` : ""}
+      </div>
+    </div>`;
+}
+
+function wireCalSettings() {
+  const save = document.getElementById("ics-save");
+  const clear = document.getElementById("ics-clear");
+  if (save) save.onclick = () => {
+    const v = document.getElementById("ics-input").value.trim();
+    if (!v) return;
+    try { localStorage.setItem(CAL_KEY, v); } catch (e) {}
+    loadCalendar();
+  };
+  if (clear) clear.onclick = () => {
+    try { localStorage.removeItem(CAL_KEY); } catch (e) {}
+    loadCalendar();
+  };
+}
+
 async function loadCalendar() {
   const el = document.getElementById("cal");
-  if (!ICS_URL) {
-    el.innerHTML = `<div class="cal-note">
-      No calendar connected yet.<br><br>
-      To show your events: open Google Calendar → Settings → your calendar →
-      <b>Secret address in iCal format</b>, copy the link, and paste it into the
-      <code>ICS_URL</code> value near the bottom of this file.
-    </div>`;
-    return;
-  }
+  const url = getCalUrl();
+  if (!url) { el.innerHTML = calSettingsHtml(""); wireCalSettings(); return; }
+  el.innerHTML = `<div class="loading"><div class="spinner"></div>Loading calendar…</div>`;
   try {
-    const r = await fetch(RSS_PROXIES[1](ICS_URL));
-    const j = await r.json();
-    const events = parseICS(j.contents);
-    renderCalendar(events);
+    const text = await fetchIcs(url);
+    const events = parseICS(text);
+    renderCalendar(events, url);
   } catch (e) {
-    el.innerHTML = `<div class="cal-note">Couldn't load calendar. Check the iCal URL is public.</div>`;
+    el.innerHTML = `<div class="cal-note">Couldn't load that calendar. Make sure the link is the
+      <b>public/secret iCal (.ics)</b> address and is reachable.</div>` + calSettingsHtml(url);
+    wireCalSettings();
   }
 }
+
+// Reuse the same proxy chain the news feeds use.
+async function fetchIcs(url) {
+  let lastErr;
+  for (const p of CORS_PROXIES) {
+    try {
+      const r = await fetchWithTimeout(p.build(url));
+      if (!r.ok) { lastErr = new Error("HTTP " + r.status); continue; }
+      let text = p.mode === "wrapped" ? (await r.json()).contents : await r.text();
+      if (text && text.indexOf("BEGIN:VCALENDAR") !== -1) return text;
+      lastErr = new Error("not ics");
+    } catch (e) { lastErr = e; }
+  }
+  throw lastErr || new Error("all proxies failed");
+}
+
 function parseICS(text) {
+  // Unfold folded lines (iCal wraps long lines with CRLF + space/tab)
+  text = text.replace(/\r\n[ \t]/g, "").replace(/\n[ \t]/g, "");
   const out = []; const blocks = text.split("BEGIN:VEVENT").slice(1);
-  const now = new Date(); const horizon = new Date(now.getTime() + 14*864e5);
+  const now = new Date(); const todayStart = new Date(now.toDateString());
+  const horizon = new Date(now.getTime() + 14 * 864e5);
   for (const b of blocks) {
-    const g = re => (b.match(re) || [,""])[1].trim();
-    const summary = g(/SUMMARY:(.*)/);
+    const g = re => (b.match(re) || [, ""])[1].trim();
+    const summary = g(/SUMMARY[^:]*:(.*)/) || "(no title)";
     const dt = g(/DTSTART[^:]*:(.*)/);
     if (!dt) continue;
     const d = icsDate(dt);
-    if (d >= new Date(now.toDateString()) && d <= horizon) out.push({ summary, date: d, allDay: dt.length <= 8 });
+    if (isNaN(d)) continue;
+    if (d >= todayStart && d <= horizon) out.push({ summary, date: d, allDay: dt.length <= 8 });
   }
-  return out.sort((a,b) => a.date - b.date).slice(0, 20);
+  return out.sort((a, b) => a.date - b.date).slice(0, 25);
 }
 function icsDate(s) {
+  s = s.trim();
   if (s.length <= 8) return new Date(+s.slice(0,4), +s.slice(4,6)-1, +s.slice(6,8));
-  return new Date(Date.UTC(+s.slice(0,4), +s.slice(4,6)-1, +s.slice(6,8), +s.slice(9,11), +s.slice(11,13)));
+  const utc = s.endsWith("Z");
+  const y=+s.slice(0,4), mo=+s.slice(4,6)-1, da=+s.slice(6,8), h=+s.slice(9,11), mi=+s.slice(11,13);
+  return utc ? new Date(Date.UTC(y,mo,da,h,mi)) : new Date(y,mo,da,h,mi);
 }
-function renderCalendar(events) {
+function renderCalendar(events, url) {
   const el = document.getElementById("cal");
-  if (!events.length) { el.innerHTML = `<div class="cal-note">No upcoming events in the next 2 weeks.</div>`; return; }
+  const manage = `<div style="text-align:center;margin-top:16px">
+    <button id="ics-manage" class="refresh">⚙ Change calendar link</button></div>`;
+  if (!events.length) {
+    el.innerHTML = `<div class="cal-note">No events in the next 2 weeks.</div>` + manage;
+    document.getElementById("ics-manage").onclick = () => { el.innerHTML = calSettingsHtml(url); wireCalSettings(); };
+    return;
+  }
   let html = ""; let curDay = "";
   events.forEach(ev => {
     const dayKey = ev.date.toLocaleDateString("en-GB",{weekday:"long",day:"numeric",month:"long"});
@@ -404,7 +491,8 @@ function renderCalendar(events) {
     const time = ev.allDay ? "All day" : ev.date.toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"});
     html += `<div class="event"><div class="event-time">${time}</div><div class="event-title">${ev.summary}</div></div>`;
   });
-  el.innerHTML = html;
+  el.innerHTML = html + manage;
+  document.getElementById("ics-manage").onclick = () => { el.innerHTML = calSettingsHtml(url); wireCalSettings(); };
 }
 
 /* ============ LOAD ALL ============ */
