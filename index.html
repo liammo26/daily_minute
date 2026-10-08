@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="theme-color" content="#0f1115">
+<meta name="theme-color" content="#1a1c1f">
 <title>The Daily Minute</title>
 <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
 <link rel="icon" type="image/png" sizes="16x16" href="icons/favicon-16.png">
@@ -12,329 +12,383 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Daily">
 <link rel="manifest" href="manifest.webmanifest">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<script>
+  /* Apply saved theme before first paint (no light-mode flash) */
+  try {
+    if (localStorage.getItem("dashboard_theme") === "light") {
+      document.documentElement.setAttribute("data-theme", "light");
+      document.querySelector('meta[name="theme-color"]').setAttribute("content", "#e8eaec");
+    }
+  } catch (e) {}
+</script>
 <style>
+  /* Field notebook: ruled rows, square edges, one ink colour, mono for anything measured.
+     Interaction grammar: → moves within the app, ↗ opens another site, a square box toggles. */
   :root {
-    /* Brand colours — shared across themes */
-    --bbc: #bb1919;
-    --sport: #f5c518;
-    --ajz: #fa9000;
-    --weather: #2f8fd6;
-    --cal: #2fa85f;
-    --habit: #2fa85f;
-    --habit-flame: #ff9f1c;
+    /* Graphite (default) */
+    --bg: #1a1c1f;
+    --surface: #222529;
+    --ink: #e3e5e8;
+    --muted: #8a919b;
+    --rule: #30343a;
+    --rule-strong: #4a5059;
+    --accent: #93b4e0;      /* ink blue, lifted for dark */
+    --on-accent: #10161f;
 
-    /* Dark theme (default) */
-    --bg: #0f1115;
-    --card: #191c22;
-    --card-hover: #21252d;
-    --text: #e8eaed;
-    --muted: #9aa0aa;
-    --line: #2a2e37;
-    --accent: #4f9dde;
-    --accent-dim: #2d5138;
-    --header-bg: rgba(15,17,21,.85);
-    --wx-grad: linear-gradient(135deg, #1a2733, #191c22);
-    /* Per-section tint of the page background — subtle in dark mode */
-    --section-tint: transparent;
-    --tab-active-text: #fff;
+    /* Section markers — muted, only ever a small square or an underline */
+    --news: #c4605a;
+    --weather: #6f9cc4;
+    --cal: #6aa37f;
+
+    --font-body: "Archivo", "Helvetica Neue", Arial, sans-serif;
+    --font-mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    color-scheme: dark;
   }
-
   [data-theme="light"] {
-    --bg: #f4f5f7;
-    --card: #ffffff;
-    --card-hover: #eef0f3;
-    --text: #14161a;
-    --muted: #5c6470;
-    --line: #dfe3e8;
-    --accent: #2f8fd6;
-    --accent-dim: #bfe0cb;
-    --header-bg: rgba(255,255,255,.9);
-    --wx-grad: linear-gradient(135deg, #e3f0fb, #ffffff);
-    --section-tint: transparent;
-    --tab-active-text: #fff;
-    /* Punchier brand colours for light mode */
-    --sport: #e0aa00;
-    --habit-flame: #f57c00;
+    /* Paper grey */
+    --bg: #e8eaec;
+    --surface: #f3f4f5;
+    --ink: #18202b;
+    --muted: #5a6370;
+    --rule: #c7ccd3;
+    --rule-strong: #9aa2ad;
+    --accent: #1f4b86;
+    --on-accent: #f3f4f5;
+
+    --news: #a23b35;
+    --weather: #2f6496;
+    --cal: #2f6d48;
+    color-scheme: light;
   }
-  [data-theme="light"] .tab.active { color: #fff; }
+
   * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
   body {
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    font-family: var(--font-body);
+    font-size: 15px;
     background: var(--bg);
-    color: var(--text);
+    color: var(--ink);
     line-height: 1.4;
     padding: env(safe-area-inset-top) 0 env(safe-area-inset-bottom);
     -webkit-font-smoothing: antialiased;
   }
-  .top-bar {
-    position: sticky; top: 0; z-index: 20;
+  .mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+  button { font: inherit; color: inherit; }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .muted { color: var(--muted); }
+
+  /* ---------- Top bar (header + tabs pinned together) ---------- */
+  .top-bar { position: sticky; top: 0; z-index: 20; background: var(--bg); }
+  header { padding: 14px 16px 10px; max-width: 620px; margin: 0 auto; }
+  .head-row { display: flex; align-items: center; gap: 12px; }
+  h1 { font-size: 1rem; font-weight: 600; flex: 1; min-width: 0; }
+  h1 .wk { font-family: var(--font-mono); font-weight: 400; font-size: .72rem; color: var(--muted); margin-left: 8px; letter-spacing: .04em; }
+  .icon-btn {
+    width: 32px; height: 32px; flex-shrink: 0;
+    background: transparent; border: 1px solid var(--rule-strong); border-radius: 0;
+    font-size: .95rem; line-height: 1; cursor: pointer;
+    display: inline-flex; align-items: center; justify-content: center;
   }
-  header {
-    padding: 18px 16px 12px;
-    background: var(--header-bg);
-    backdrop-filter: blur(12px);
-    border-bottom: 1px solid var(--line);
-  }
-  .head-row { display: flex; justify-content: space-between; align-items: baseline; }
-  h1 { font-size: 1.5rem; font-weight: 700; letter-spacing: -.5px; }
-  .date { color: var(--muted); font-size: .85rem; }
-  .refresh {
-    background: var(--card); border: 1px solid var(--line); color: var(--muted);
-    border-radius: 20px; padding: 5px 12px; font-size: .78rem; cursor: pointer;
-    margin-top: 8px; display: inline-flex; align-items: center; gap: 5px;
-  }
-  .refresh:active { background: var(--card-hover); }
-  .quote {
-    margin-top: 10px; font-size: .82rem; color: var(--muted);
-    font-style: italic; line-height: 1.45; max-width: 90%;
-  }
-  .quote b { color: var(--text); font-style: normal; font-weight: 600; }
+  .icon-btn:active { background: var(--surface); }
+  .half { width: 12px; height: 12px; border: 1.5px solid var(--ink); background: linear-gradient(90deg, var(--ink) 50%, transparent 50%); }
+  .quote { margin-top: 6px; font-size: .8rem; color: var(--muted); font-style: italic; line-height: 1.45; }
+  .quote b { color: var(--ink); font-style: normal; font-weight: 500; }
   .quote a { color: var(--muted); text-decoration: none; font-style: normal; opacity: .6; }
 
-  /* Tab bar */
   nav {
-    display: flex; gap: 6px; overflow-x: auto; padding: 10px 16px;
-    background: var(--header-bg); backdrop-filter: blur(12px);
-    border-bottom: 1px solid var(--line); scrollbar-width: none;
+    display: flex; gap: 20px; overflow-x: auto; padding: 0 16px;
+    border-bottom: 1px solid var(--rule); scrollbar-width: none;
+    max-width: 620px; margin: 0 auto;
   }
   nav::-webkit-scrollbar { display: none; }
   .tab {
-    white-space: nowrap; padding: 7px 14px; border-radius: 18px;
-    background: var(--card); border: 1px solid var(--line); color: var(--muted);
-    font-size: .85rem; font-weight: 500; cursor: pointer; flex-shrink: 0;
+    white-space: nowrap; padding: 10px 0 9px; background: none; border: 0;
+    border-bottom: 2px solid transparent; margin-bottom: -1px;
+    color: var(--muted); font-size: .88rem; font-weight: 500; cursor: pointer; flex-shrink: 0;
   }
-  .tab.active { background: var(--accent); border-color: var(--accent); color: var(--tab-active-text); }
+  .tab.active { color: var(--ink); border-bottom-color: var(--mark); }
 
-  /* Per-tab brand colours when active */
-  .tab[data-tab="bbc"].active     { background: var(--bbc);     border-color: var(--bbc);     color: #fff; }
-  .tab[data-tab="sport"].active   { background: var(--sport);   border-color: var(--sport);   color: #1a1400; }
-  .tab[data-tab="ajz"].active     { background: var(--ajz);     border-color: var(--ajz);     color: #fff; }
-  .tab[data-tab="weather"].active { background: var(--weather); border-color: var(--weather); color: #fff; }
-  .tab[data-tab="calendar"].active{ background: var(--cal);     border-color: var(--cal);     color: #fff; }
-  .tab[data-tab="habits"].active  { background: var(--habit);   border-color: var(--habit);   color: #fff; }
+  /* One marker colour per area, used by its tab, its section and its Today window */
+  [data-area="today"]    { --mark: var(--ink); }
+  [data-area="habits"]   { --mark: var(--accent); }
+  [data-area="calendar"] { --mark: var(--cal); }
+  [data-area="weather"]  { --mark: var(--weather); }
+  [data-area="news"]     { --mark: var(--news); }
 
-  /* Per-section page tint — each section paints --brand, everything themable reads it */
-  #bbc      { --brand: var(--bbc); }
-  #sport    { --brand: var(--sport); }
-  #ajz      { --brand: var(--ajz); }
-  #weather  { --brand: var(--weather); }
-  #calendar { --brand: var(--cal); }
-  #habits   { --brand: var(--habit); }
-  section.active .sec-title { color: var(--brand); }
-  /* Light mode: tint the section background and accents with the brand colour */
-  [data-theme="light"] section.active .card,
-  [data-theme="light"] section.active .habit,
-  [data-theme="light"] section.active .event,
-  [data-theme="light"] section.active .wx-now,
-  [data-theme="light"] section.active .cal-note {
-    border-color: color-mix(in srgb, var(--brand) 35%, var(--line));
-  }
-  [data-theme="light"] section.active .card.lead { border-left-color: var(--brand); }
-  /* subtle brand wash behind the active section in light mode */
-  [data-theme="light"] section.active {
-    background: color-mix(in srgb, var(--brand) 7%, transparent);
-    border-radius: 16px; padding: 12px; margin: -12px -4px 0;
-  }
-  .theme-toggle {
-    background: var(--card); border: 1px solid var(--line); color: var(--muted);
-    border-radius: 20px; padding: 5px 12px; font-size: .78rem; cursor: pointer;
-    margin-top: 8px; margin-left: 8px; display: inline-flex; align-items: center; gap: 5px;
-  }
-  .theme-toggle:active { background: var(--card-hover); }
-
-  main { padding: 14px 16px 40px; max-width: 620px; margin: 0 auto; }
+  /* ---------- Sections ---------- */
+  main { padding: 0 16px 48px; max-width: 620px; margin: 0 auto; }
   section { display: none; }
-  section.active { display: block; animation: fade .25s ease; }
-  @keyframes fade { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+  section.active { display: block; }
 
-  .sec-title {
-    display: flex; align-items: center; gap: 8px;
-    font-size: .95rem; font-weight: 600; margin: 4px 0 12px; color: var(--muted);
-    text-transform: uppercase; letter-spacing: .5px; font-size: .72rem;
+  /* Head line: the same component heads every tab and every Today window */
+  .head-line {
+    display: flex; align-items: center; gap: 10px; width: 100%;
+    font-family: var(--font-mono); font-size: .7rem; color: var(--muted);
+    text-transform: uppercase; letter-spacing: .06em; text-align: left;
+    padding: 12px 0 10px; border: 0; border-bottom: 1px solid var(--rule); background: none;
   }
-  .dot { width: 8px; height: 8px; border-radius: 50%; }
+  .head-line .label { flex: 1; min-width: 0; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .head-line .mark { display: inline-block; width: 7px; height: 7px; background: var(--mark); margin-right: 8px; vertical-align: 1px; }
+  .head-line .sum { white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .head-line .go { color: var(--ink); font-size: .85rem; margin-left: 2px; }
+  button.head-line { cursor: pointer; }
+  button.head-line:active { background: var(--surface); }
 
-  /* News cards */
-  .card {
-    display: block; text-decoration: none; color: inherit;
-    background: var(--card); border: 1px solid var(--line);
-    border-radius: 14px; padding: 14px; margin-bottom: 10px;
-    transition: background .15s;
-  }
-  .card:active { background: var(--card-hover); }
-  .card.lead { border-left: 3px solid var(--accent); }
-  .card-title { font-size: .98rem; font-weight: 600; margin-bottom: 5px; }
-  .card.lead .card-title { font-size: 1.08rem; }
-  .card-desc { font-size: .85rem; color: var(--muted); margin-bottom: 7px;
-    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-  .card-meta { font-size: .72rem; color: var(--muted); display: flex; gap: 8px; align-items: center; }
+  .window + .window { margin-top: 26px; }
+  .window .head-line { border-top: 1px solid var(--rule-strong); }
+  .window:first-child .head-line { border-top: 0; }
 
-  /* Weather */
-  .wx-now {
-    background: var(--wx-grad);
-    border: 1px solid var(--line); border-radius: 16px; padding: 18px; margin-bottom: 12px;
+  .sub-label {
+    display: flex; justify-content: space-between; gap: 12px;
+    font-family: var(--font-mono); font-size: .68rem; color: var(--muted);
+    text-transform: uppercase; letter-spacing: .06em;
+    padding: 20px 0 6px; border-bottom: 1px solid var(--rule);
   }
-  .wx-top { display: flex; justify-content: space-between; align-items: center; }
-  .wx-temp { font-size: 3rem; font-weight: 700; letter-spacing: -2px; }
-  .wx-icon { font-size: 3rem; }
-  .wx-desc { color: var(--muted); font-size: .9rem; margin-top: 2px; }
-  .wx-stats { display: flex; gap: 18px; margin-top: 14px; font-size: .82rem; color: var(--muted); flex-wrap: wrap; }
-  .wx-stats b { color: var(--text); font-weight: 600; }
-  table.wx { width: 100%; border-collapse: collapse; font-size: .85rem; }
-  table.wx th { text-align: left; color: var(--muted); font-weight: 500; padding: 8px 6px; font-size: .72rem; text-transform: uppercase; border-bottom: 1px solid var(--line); }
-  table.wx td { padding: 9px 6px; border-bottom: 1px solid var(--line); }
-  table.wx tr:last-child td { border-bottom: none; }
-  .wx-em { font-size: 1.1rem; }
+  .sub-label a { color: var(--muted); text-decoration: none; }
+  .sub-label a:active { color: var(--ink); }
 
-  /* Calendar */
-  .cal-day { font-size: .78rem; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; margin: 16px 0 8px; }
-  .event {
-    display: flex; gap: 12px; background: var(--card); border: 1px solid var(--line);
-    border-radius: 12px; padding: 12px; margin-bottom: 8px;
+  /* ---------- Rows (news) ---------- */
+  .row {
+    display: flex; gap: 12px; align-items: flex-start; text-decoration: none; color: inherit;
+    padding: 11px 0; border-bottom: 1px solid var(--rule);
   }
-  .event-time { font-size: .8rem; color: var(--accent); font-weight: 600; min-width: 52px; }
-  .event-title { font-size: .92rem; }
-  .cal-note {
-    background: var(--card); border: 1px dashed var(--line); border-radius: 12px;
-    padding: 16px; font-size: .85rem; color: var(--muted); text-align: center;
-  }
-  .cal-note a { color: var(--accent); }
+  .row:active { background: var(--surface); }
+  .row-body { flex: 1; min-width: 0; }
+  .row-title { font-size: .95rem; font-weight: 500; line-height: 1.35; }
+  .row-time { font-family: var(--font-mono); font-size: .7rem; color: var(--muted); margin-top: 4px; font-variant-numeric: tabular-nums; }
+  .ext { color: var(--muted); font-size: .8rem; padding-top: 2px; }
 
-  /* Habits */
-  .habit { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 14px; margin-bottom: 12px; }
-  .habit-top { display: flex; align-items: center; gap: 12px; }
-  .check {
-    width: 42px; height: 42px; border-radius: 12px; flex-shrink: 0;
-    border: 2px solid var(--line); background: var(--bg);
-    display: flex; align-items: center; justify-content: center;
-    font-size: 1.3rem; cursor: pointer; transition: all .15s; color: transparent;
+  /* Action row: an in-app next step inside a window */
+  .action {
+    display: flex; justify-content: space-between; width: 100%; text-align: left;
+    padding: 12px 0; border: 0; border-bottom: 1px solid var(--rule); background: none;
+    font-size: .9rem; cursor: pointer;
   }
-  .check.done { background: var(--habit); border-color: var(--habit); color: #0f1115; }
-  .check:active { transform: scale(.92); }
-  .habit-info { flex: 1; min-width: 0; }
-  .habit-name { font-size: 1rem; font-weight: 600; }
-  .habit-streak { font-size: .8rem; color: var(--muted); margin-top: 2px; display: flex; align-items: center; gap: 4px; }
-  .flame { color: var(--habit-flame); }
-  .del { background: none; border: none; color: var(--muted); font-size: 1.1rem; cursor: pointer; padding: 6px; opacity: .5; }
-  .del:active { opacity: 1; }
-  .grid { display: flex; gap: 4px; margin-top: 12px; flex-wrap: wrap; }
-  .cell { width: 15px; height: 15px; border-radius: 4px; background: var(--card-hover); border: 1px solid var(--line); }
-  .cell.on { background: var(--habit); border-color: var(--habit); }
-  .cell.today { box-shadow: 0 0 0 2px var(--accent-dim, #2d5138); }
-  .grid-label { font-size: .68rem; color: var(--muted); margin-top: 10px; text-transform: uppercase; letter-spacing: .5px; }
-  .add-row { display: flex; gap: 8px; margin-top: 8px; }
-  .add-row input { flex: 1; padding: 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--card); color: var(--text); font-size: .9rem; }
-  .add-row input::placeholder { color: var(--muted); }
-  .btn { padding: 12px 16px; border-radius: 10px; border: 1px solid var(--habit); background: var(--habit); color: #0f1115; font-weight: 600; font-size: .9rem; cursor: pointer; }
+  .action:active { background: var(--surface); }
+
+  /* ---------- Weather ---------- */
+  .wx-now { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; padding: 16px 0 12px; }
+  .wx-temp { font-family: var(--font-mono); font-size: 2.6rem; line-height: 1; letter-spacing: -.02em; }
+  .wx-now.compact { padding: 12px 0 10px; }
+  .wx-now.compact .wx-temp { font-size: 1.7rem; }
+  .wx-desc { color: var(--muted); font-size: .88rem; margin-top: 6px; }
+  .wx-icon { font-size: 2.2rem; line-height: 1; }
+  .wx-now.compact .wx-icon { font-size: 1.6rem; }
+  .wx-stats {
+    display: flex; gap: 18px; flex-wrap: wrap; padding: 10px 0;
+    border-top: 1px solid var(--rule); border-bottom: 1px solid var(--rule);
+    font-size: .82rem; color: var(--muted);
+  }
+  .wx-stats b { font-family: var(--font-mono); color: var(--ink); font-weight: 500; }
+
+  .strip { display: grid; grid-template-columns: repeat(6, 1fr); border-top: 1px solid var(--rule); border-bottom: 1px solid var(--rule); }
+  .strip > div { padding: 8px 0; text-align: center; font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+  .strip > div + div { border-left: 1px solid var(--rule); }
+  .strip .h { font-size: .66rem; color: var(--muted); letter-spacing: .04em; }
+  .strip .e { font-size: 1.05rem; line-height: 1.5; }
+  .strip .t { font-size: .85rem; }
+  .strip .r { font-size: .66rem; color: var(--muted); }
+  .strip .past { opacity: .4; }
+  .strip .cur { box-shadow: inset 0 2px 0 var(--ink); }
+  .strip .cur .h { color: var(--ink); }
+
+  .daylight { padding: 12px 0; border-bottom: 1px solid var(--rule); }
+  .dl-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+  .dl-value { font-family: var(--font-mono); font-size: 1.05rem; }
+  .dl-note { font-size: .82rem; color: var(--muted); }
+  .dl-bar { position: relative; height: 6px; margin-top: 10px; border: 1px solid var(--rule-strong); }
+  .dl-bar .elapsed { position: absolute; inset: 0 auto 0 0; background: var(--rule-strong); }
+  .dl-bar .now { position: absolute; top: -4px; bottom: -4px; width: 2px; background: var(--ink); }
+  .dl-ends { display: flex; justify-content: space-between; font-family: var(--font-mono); font-size: .7rem; color: var(--muted); margin-top: 6px; }
+
+  .table-wrap { overflow-x: auto; }
+  table.wx { width: 100%; border-collapse: collapse; font-size: .86rem; font-variant-numeric: tabular-nums; }
+  table.wx th {
+    text-align: left; color: var(--muted); font-weight: 400; padding: 8px 4px 6px;
+    font-family: var(--font-mono); font-size: .68rem; text-transform: uppercase; letter-spacing: .06em;
+    border-bottom: 1px solid var(--rule);
+  }
+  table.wx td { padding: 8px 4px; border-bottom: 1px solid var(--rule); font-family: var(--font-mono); }
+  table.wx td:first-child { font-family: var(--font-body); }
+  table.wx th:last-child, table.wx td:last-child { text-align: right; }
+  .wx-em { font-size: 1.05rem; }
+  .lo { color: var(--muted); }
+
+  /* ---------- Calendar ---------- */
+  .cal-day {
+    font-family: var(--font-mono); font-size: .7rem; color: var(--muted);
+    text-transform: uppercase; letter-spacing: .06em;
+    padding: 18px 0 6px; border-bottom: 1px solid var(--rule);
+  }
+  .event { display: flex; gap: 14px; padding: 10px 0; border-bottom: 1px solid var(--rule); }
+  .event-time { font-family: var(--font-mono); font-size: .8rem; min-width: 54px; padding-top: 1px; font-variant-numeric: tabular-nums; }
+  .event-title { font-size: .92rem; min-width: 0; }
+  .event.past { color: var(--muted); }
+  .event.past .event-title { text-decoration: line-through; text-decoration-color: var(--rule-strong); }
+  .note { padding: 12px 0; font-size: .88rem; color: var(--muted); border-bottom: 1px solid var(--rule); }
+  .cal-form { padding: 16px 0; display: grid; gap: 10px; }
+  .cal-form p { font-size: .88rem; color: var(--muted); }
+  .cal-form details { font-size: .84rem; color: var(--muted); }
+  .cal-form summary { cursor: pointer; color: var(--ink); }
+  .cal-form details div { padding: 8px 0 0; line-height: 1.5; }
+  .field {
+    width: 100%; padding: 10px; border: 1px solid var(--rule-strong); border-radius: 0;
+    background: var(--surface); color: var(--ink); font-family: var(--font-mono); font-size: .8rem;
+  }
+  .btn-row { display: flex; gap: 8px; }
+  .btn {
+    padding: 10px 14px; border-radius: 0; border: 1px solid var(--accent);
+    background: var(--accent); color: var(--on-accent); font-weight: 500; font-size: .86rem; cursor: pointer;
+  }
+  .btn.ghost { background: transparent; color: var(--ink); border-color: var(--rule-strong); }
   .btn:active { opacity: .85; }
-  .summary { text-align: center; color: var(--muted); font-size: .82rem; margin: 4px 0 18px; }
-  .summary b { color: var(--text); }
-  .empty { text-align: center; color: var(--muted); padding: 30px 16px; font-size: .9rem; background: var(--card); border: 1px dashed var(--line); border-radius: 14px; margin-bottom: 16px; }
+  .text-link { background: none; border: 0; color: var(--muted); font-size: .8rem; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; padding: 16px 0 0; }
 
-  .loading, .error {
-    text-align: center; color: var(--muted); padding: 30px 10px; font-size: .88rem;
+  /* ---------- Habits (same row on the Habits tab and on Today) ---------- */
+  .habit { border-bottom: 1px solid var(--rule); }
+  .habit-top {
+    display: flex; align-items: center; gap: 12px; padding: 12px 0;
+    cursor: pointer; user-select: none;
   }
-  .spinner {
-    width: 22px; height: 22px; border: 2px solid var(--line); border-top-color: var(--accent);
-    border-radius: 50%; animation: spin .8s linear infinite; margin: 0 auto 12px;
+  .habit-top:active { background: var(--surface); }
+  .habits-full .habit-top { padding-bottom: 8px; }
+  .check {
+    width: 26px; height: 26px; flex-shrink: 0; border-radius: 0;
+    border: 1.5px solid var(--rule-strong); background: transparent;
+    display: flex; align-items: center; justify-content: center;
+    font-size: .95rem; color: transparent; pointer-events: none;
   }
-  @keyframes spin { to { transform: rotate(360deg); } }
-  .error a { color: var(--accent); }
-  footer { text-align: center; color: var(--muted); font-size: .72rem; padding: 20px 16px 0; }
+  .habit.done .check { background: var(--ink); border-color: var(--ink); color: var(--bg); }
+  .habit-name { flex: 1; min-width: 0; font-size: .96rem; font-weight: 500; }
+  .habit.done .habit-name { color: var(--muted); }
+  .habit-streak { font-family: var(--font-mono); font-size: .78rem; color: var(--muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .habit-streak.on { color: var(--ink); }
+  .del { background: none; border: none; color: var(--muted); font-size: .9rem; cursor: pointer; padding: 4px 2px 4px 8px; opacity: .55; }
+  .del:active { opacity: 1; }
+  .grid { display: grid; grid-template-columns: repeat(28, 1fr); gap: 2px; margin: 0 0 12px 38px; max-width: 420px; }
+  .cell { aspect-ratio: 1; max-width: 100%; border: 1px solid var(--rule); }
+  .cell.on { background: var(--ink); border-color: var(--ink); opacity: .82; }
+  .cell.today { outline: 1px solid var(--accent); outline-offset: 1px; }
+  .add-row { display: flex; gap: 8px; padding-top: 14px; }
+  .add-row input {
+    flex: 1; min-width: 0; padding: 10px 0; border: 0; border-bottom: 1px solid var(--rule-strong); border-radius: 0;
+    background: transparent; color: var(--ink); font-family: var(--font-body); font-size: .92rem;
+  }
+  .add-row input:focus { outline: none; border-bottom-color: var(--accent); }
+  .add-row input::placeholder { color: var(--muted); }
+
+  /* ---------- Loading / errors ---------- */
+  .loading { padding: 14px 0; font-family: var(--font-mono); font-size: .75rem; color: var(--muted); border-bottom: 1px solid var(--rule); }
+  .loading::after {
+    content: ""; display: block; height: 1px; margin-top: 10px; background: var(--rule-strong);
+    transform-origin: left; animation: load 1.2s ease-in-out infinite;
+  }
+  @keyframes load { 0% { transform: scaleX(0); } 60% { transform: scaleX(1); } 100% { transform: scaleX(1); opacity: 0; } }
+  @media (prefers-reduced-motion: reduce) { .loading::after { animation: none; } }
+  .error { padding: 12px 0; color: var(--muted); font-size: .88rem; border-bottom: 1px solid var(--rule); }
+  .error a { color: var(--ink); }
 </style>
 </head>
 <body>
 <div class="top-bar">
 <header>
   <div class="head-row">
-    <h1>Daily</h1>
-    <span class="date" id="date"></span>
+    <h1><span id="date"></span><span class="wk" id="week"></span></h1>
+    <button class="icon-btn" id="refresh" aria-label="Refresh" title="Refresh">↻</button>
+    <button class="icon-btn" id="theme-toggle" aria-label="Switch theme" title="Switch theme"><span class="half"></span></button>
   </div>
   <div class="quote" id="quote"></div>
-  <button class="refresh" id="refresh">↻ Refresh</button>
-  <button class="theme-toggle" id="theme-toggle">☀️ Light</button>
 </header>
 
 <nav id="tabs">
-  <button class="tab active" data-tab="habits">Habits</button>
-  <button class="tab" data-tab="calendar">Calendar</button>
-  <button class="tab" data-tab="weather">Weather</button>
-  <button class="tab" data-tab="bbc">BBC News</button>
-  <button class="tab" data-tab="sport">BBC Sport</button>
-  <button class="tab" data-tab="ajz">Al Jazeera</button>
+  <button class="tab active" data-tab="today"    data-area="today">Today</button>
+  <button class="tab"        data-tab="habits"   data-area="habits">Habits</button>
+  <button class="tab"        data-tab="calendar" data-area="calendar">Calendar</button>
+  <button class="tab"        data-tab="weather"  data-area="weather">Weather</button>
+  <button class="tab"        data-tab="news"     data-area="news">News</button>
 </nav>
 </div>
 
 <main>
-  <section id="bbc">
-    <div class="sec-title"><span class="dot" style="background:var(--bbc)"></span>BBC News · Top Stories</div>
-    <div id="bbc-feed"><div class="loading"><div class="spinner"></div>Loading headlines…</div></div>
+  <!-- TODAY: one window per tab, in tab order. Head opens the tab; rows act in place. -->
+  <section class="active" id="today" data-area="today">
+    <div class="window" data-area="habits">
+      <button class="head-line" data-goto="habits"><span class="label"><span class="mark"></span>Habits</span><span class="sum" id="ov-hb-sum"></span><span class="go">→</span></button>
+      <div id="ov-habits"></div>
+    </div>
+    <div class="window" data-area="calendar">
+      <button class="head-line" data-goto="calendar"><span class="label"><span class="mark"></span>Calendar · Today</span><span class="sum" id="ov-cal-sum"></span><span class="go">→</span></button>
+      <div id="ov-cal"><div class="loading">Loading</div></div>
+    </div>
+    <div class="window" data-area="weather">
+      <button class="head-line" data-goto="weather"><span class="label"><span class="mark"></span>Weather · Today</span><span class="sum" id="ov-wx-sum"></span><span class="go">→</span></button>
+      <div id="ov-wx"><div class="loading">Loading</div></div>
+    </div>
+    <div class="window" data-area="news">
+      <button class="head-line" data-goto="news"><span class="label"><span class="mark"></span>News · Top stories</span><span class="sum" id="ov-news-sum"></span><span class="go">→</span></button>
+      <div id="ov-news"><div class="loading">Loading</div></div>
+    </div>
   </section>
 
-  <section id="sport">
-    <div class="sec-title"><span class="dot" style="background:var(--sport)"></span>BBC Sport</div>
-    <div id="sport-feed"><div class="loading"><div class="spinner"></div>Loading headlines…</div></div>
-  </section>
-
-  <section id="ajz">
-    <div class="sec-title"><span class="dot" style="background:var(--ajz)"></span>Al Jazeera</div>
-    <div id="ajz-feed"><div class="loading"><div class="spinner"></div>Loading headlines…</div></div>
-  </section>
-
-  <section id="weather">
-    <div class="sec-title"><span class="dot" style="background:var(--weather)"></span>Weather · Edinburgh</div>
-    <div id="wx"><div class="loading"><div class="spinner"></div>Loading forecast…</div></div>
-  </section>
-
-  <section id="calendar">
-    <div class="sec-title"><span class="dot" style="background:var(--cal)"></span>Calendar</div>
-    <div id="cal"></div>
-  </section>
-
-  <section class="active" id="habits">
-    <div class="sec-title"><span class="dot" style="background:var(--habit)"></span>Habits</div>
-    <div class="summary" id="hb-summary"></div>
-    <div id="hb-list"></div>
+  <section id="habits" data-area="habits">
+    <div class="head-line"><span class="label"><span class="mark"></span>Habits</span><span class="sum" id="hb-summary"></span></div>
+    <div id="hb-list" class="habits-full"></div>
     <div class="add-row">
-      <input id="hb-new" type="text" placeholder="New habit — e.g. Read 20 min" maxlength="40" />
+      <input id="hb-new" type="text" placeholder="New habit" maxlength="40" />
       <button class="btn" id="hb-add">Add</button>
     </div>
   </section>
-</main>
 
-<footer>Pull-to-refresh or tap ↻ · Updates on load</footer>
+  <section id="calendar" data-area="calendar">
+    <div class="head-line"><span class="label"><span class="mark"></span>Calendar · 14 days</span><span class="sum" id="cal-count"></span></div>
+    <div id="cal"></div>
+  </section>
+
+  <section id="weather" data-area="weather">
+    <div class="head-line"><span class="label"><span class="mark"></span>Weather · <span id="wx-place"></span></span><span class="sum" id="wx-coords"></span></div>
+    <div id="wx"><div class="loading">Loading</div></div>
+  </section>
+
+  <section id="news" data-area="news">
+    <div class="head-line"><span class="label"><span class="mark"></span>News · Top stories</span><span class="sum" id="news-stamp"></span></div>
+    <div id="news-feed"></div>
+  </section>
+</main>
 
 <script>
 /* ============ CONFIG ============ */
 const FEEDS = {
-  bbc:   { url: "https://feeds.bbci.co.uk/news/rss.xml",        lead: true },
-  sport: { url: "https://feeds.bbci.co.uk/sport/rss.xml",       lead: true },
-  ajz:   { url: "https://www.aljazeera.com/xml/rss/all.xml",    lead: true }
+  bbc:   { name: "BBC News",   url: "https://feeds.bbci.co.uk/news/rss.xml",     site: "https://www.bbc.co.uk/news" },
+  sport: { name: "BBC Sport",  url: "https://feeds.bbci.co.uk/sport/rss.xml",    site: "https://www.bbc.co.uk/sport" },
+  ajz:   { name: "Al Jazeera", url: "https://www.aljazeera.com/xml/rss/all.xml", site: "https://www.aljazeera.com" }
 };
-// Edinburgh coordinates
+const NEWS_PER_SOURCE = 3;
+// Location — change these three if you move
+const PLACE = "Edinburgh";
 const LAT = 55.9533, LON = -3.1883;
-// Fallback chain of CORS proxies. Each entry says how to build the URL and how to read the body.
-// "text" = proxy returns the raw XML; "wrapped" = proxy returns {contents: "<xml>"}.
+// News comes from rss2json first (fast, returns JSON). These CORS proxies are the fallback,
+// and the calendar's only route. "text" = raw body; "wrapped" = {contents: "..."}, which
+// allorigins sometimes returns as a base64 data: URI — readProxy() handles both.
+// (corsproxy.io now requires a paid key; thingproxy is gone — both removed Oct 2026.)
+const RSS2JSON = u => `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(u)}`;
 const CORS_PROXIES = [
-  { build: u => `https://corsproxy.io/?url=${encodeURIComponent(u)}`,            mode: "text" },
   { build: u => `https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`,   mode: "text" },
   { build: u => `https://api.allorigins.win/get?url=${encodeURIComponent(u)}`,   mode: "wrapped" },
-  { build: u => `https://thingproxy.freeboard.io/fetch/${u}`,                    mode: "text" },
   { build: u => `https://api.codetabs.com/v1/proxy/?quest=${encodeURIComponent(u)}`, mode: "text" }
 ];
 
 /* ============ THEME ============ */
 const THEME_KEY = "dashboard_theme";
 function applyTheme(mode) {
-  const btn = document.getElementById("theme-toggle");
+  const meta = document.querySelector('meta[name="theme-color"]');
   if (mode === "light") {
     document.documentElement.setAttribute("data-theme", "light");
-    document.querySelector('meta[name="theme-color"]').setAttribute("content", "#f4f5f7");
-    btn.textContent = "🌙 Dark";
+    meta.setAttribute("content", "#e8eaec");
   } else {
     document.documentElement.removeAttribute("data-theme");
-    document.querySelector('meta[name="theme-color"]').setAttribute("content", "#0f1115");
-    btn.textContent = "☀️ Light";
+    meta.setAttribute("content", "#1a1c1f");
   }
 }
 let currentTheme;
@@ -346,12 +400,52 @@ document.getElementById("theme-toggle").addEventListener("click", () => {
   applyTheme(currentTheme);
 });
 
-/* ============ DATE ============ */
-document.getElementById("date").textContent =
-  new Date().toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" });
+/* ============ HELPERS ============ */
+const $ = id => document.getElementById(id);
+function esc(s) { return String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+function hhmm(d) { return d.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }); }
+function timeAgo(dateStr) {
+  const d = new Date(dateStr); if (isNaN(d)) return "";
+  const mins = Math.floor((Date.now() - d) / 60000);
+  if (mins < 1) return "now";
+  if (mins < 60) return mins + "m";
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return hrs + "h";
+  return Math.floor(hrs / 24) + "d";
+}
+function stripHtml(s) { const t = document.createElement("div"); t.innerHTML = s || ""; return t.textContent.trim(); }
+function fetchWithTimeout(u, ms = 8000) {
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), ms);
+  return fetch(u, { signal: ctrl.signal }).finally(() => clearTimeout(t));
+}
+const LOADING = `<div class="loading">Loading</div>`;
+async function readProxy(r, mode) {
+  if (mode !== "wrapped") return r.text();
+  const c = (await r.json()).contents || "";
+  const m = c.match(/^data:[^,]*;base64,(.*)$/s);
+  if (!m) return c;
+  return new TextDecoder().decode(Uint8Array.from(atob(m[1]), ch => ch.charCodeAt(0)));
+}
+function isoWeek(d) {
+  const t = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+  const day = t.getUTCDay() || 7;
+  t.setUTCDate(t.getUTCDate() + 4 - day);
+  const y0 = new Date(Date.UTC(t.getUTCFullYear(), 0, 1));
+  return Math.ceil(((t - y0) / 864e5 + 1) / 7);
+}
+
+/* ============ HEADER ============ */
+(function () {
+  const now = new Date();
+  $("date").textContent = now.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" });
+  $("week").textContent = "WK " + String(isoWeek(now)).padStart(2, "0");
+  $("wx-place").textContent = PLACE;
+  $("wx-coords").textContent =
+    `${Math.abs(LAT).toFixed(2)}°${LAT >= 0 ? "N" : "S"} ${Math.abs(LON).toFixed(2)}°${LON >= 0 ? "E" : "W"}`;
+})();
 
 /* ============ DAILY QUOTE ============ */
-// Offline fallback set — guarantees the header is never empty if the network/API fails.
 const FALLBACK_QUOTES = [
   ["The secret of getting ahead is getting started.", "Mark Twain"],
   ["Well done is better than well said.", "Benjamin Franklin"],
@@ -368,27 +462,17 @@ const FALLBACK_QUOTES = [
   ["Start where you are. Use what you have. Do what you can.", "Arthur Ashe"],
   ["Quality is not an act, it is a habit.", "Aristotle"]
 ];
-function dayIndex() {
-  // Days since epoch — stable per calendar day, rotates the fallback set.
-  return Math.floor(Date.now() / 864e5);
-}
-function fallbackQuote() {
-  return FALLBACK_QUOTES[dayIndex() % FALLBACK_QUOTES.length];
-}
 function renderQuote(text, author) {
-  document.getElementById("quote").innerHTML =
-    `“${text}” <b>— ${author}</b> <a href="https://zenquotes.io" target="_blank" rel="noopener">·</a>`;
+  $("quote").innerHTML =
+    `“${esc(text)}” <b>— ${esc(author)}</b> <a href="https://zenquotes.io" target="_blank" rel="noopener">·</a>`;
 }
 async function loadQuote() {
-  const el = document.getElementById("quote");
   const todayKey = new Date().toDateString();
-  // Use cached quote if already fetched today
   try {
     const cached = JSON.parse(localStorage.getItem("daily_quote") || "null");
     if (cached && cached.day === todayKey) { renderQuote(cached.q, cached.a); return; }
   } catch (e) {}
-  // Show fallback immediately so header is never blank, then try to upgrade to a live quote
-  const [fq, fa] = fallbackQuote();
+  const [fq, fa] = FALLBACK_QUOTES[Math.floor(Date.now() / 864e5) % FALLBACK_QUOTES.length];
   renderQuote(fq, fa);
   const api = "https://zenquotes.io/api/today";
   const tryParse = raw => {
@@ -396,16 +480,14 @@ async function loadQuote() {
     if (Array.isArray(arr) && arr[0] && arr[0].q) return [arr[0].q.trim(), arr[0].a || "Unknown"];
     return null;
   };
-  // Attempt: direct, then through the proxy chain
   const attempts = [
     () => fetchWithTimeout(api, 6000).then(r => r.text()),
     ...CORS_PROXIES.map(p => () => fetchWithTimeout(p.build(api), 6000)
-      .then(r => p.mode === "wrapped" ? r.json().then(j => j.contents) : r.text()))
+      .then(r => readProxy(r, p.mode)))
   ];
   for (const attempt of attempts) {
     try {
-      const raw = await attempt();
-      const parsed = tryParse(raw);
+      const parsed = tryParse(await attempt());
       if (parsed) {
         renderQuote(parsed[0], parsed[1]);
         try { localStorage.setItem("daily_quote", JSON.stringify({ day: todayKey, q: parsed[0], a: parsed[1] })); } catch (e) {}
@@ -413,116 +495,88 @@ async function loadQuote() {
       }
     } catch (e) {}
   }
-  // If all fail, the fallback is already showing — nothing more to do.
 }
 
-/* ============ TABS ============ */
-const TAB_ORDER = ["habits", "calendar", "weather", "bbc", "sport", "ajz"];
+/* ============ NAVIGATION ============ */
+const TAB_ORDER = ["today", "habits", "calendar", "weather", "news"];
 function activateTab(name) {
-  document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
-  document.querySelectorAll("section").forEach(s => s.classList.remove("active"));
   const btn = document.querySelector(`.tab[data-tab="${name}"]`);
-  const sec = document.getElementById(name);
+  const sec = $(name);
   if (!btn || !sec) return;
-  btn.classList.add("active");
-  sec.classList.add("active");
-  btn.scrollIntoView({ inline: "center", block: "nearest", behavior: "smooth" });
-  window.scrollTo({ top: 0, behavior: "smooth" });
-}
-function currentTabIndex() {
-  const active = document.querySelector(".tab.active");
-  return active ? TAB_ORDER.indexOf(active.dataset.tab) : 0;
+  document.querySelectorAll(".tab").forEach(t => t.classList.toggle("active", t === btn));
+  document.querySelectorAll("main > section").forEach(s => s.classList.toggle("active", s === sec));
+  btn.scrollIntoView({ inline: "nearest", block: "nearest" });
+  window.scrollTo({ top: 0 });
 }
 function moveTab(dir) {
+  const active = document.querySelector(".tab.active");
+  const i = active ? TAB_ORDER.indexOf(active.dataset.tab) : 0;
   const n = TAB_ORDER.length;
-  const next = (currentTabIndex() + dir + n) % n;  // wraps around
-  activateTab(TAB_ORDER[next]);
+  activateTab(TAB_ORDER[(i + dir + n) % n]);
 }
-
-document.getElementById("tabs").addEventListener("click", e => {
-  const btn = e.target.closest(".tab"); if (!btn) return;
-  activateTab(btn.dataset.tab);
+$("tabs").addEventListener("click", e => {
+  const btn = e.target.closest(".tab"); if (btn) activateTab(btn.dataset.tab);
+});
+// Any element with data-goto (window heads, action rows) jumps to that tab
+document.addEventListener("click", e => {
+  const g = e.target.closest("[data-goto]"); if (g) activateTab(g.dataset.goto);
 });
 
-/* ============ SWIPE TO CHANGE TAB ============ */
+// Swipe left/right between tabs (wraps)
 (function () {
   let startX = 0, startY = 0, tracking = false;
-  const THRESHOLD = 55;   // min horizontal distance (px) to count as a swipe
+  const THRESHOLD = 55;
   const main = document.querySelector("main");
-
   main.addEventListener("touchstart", e => {
-    // Ignore multi-touch (pinch/zoom) and swipes starting on horizontally-scrollable bits
-    if (e.touches.length !== 1) { tracking = false; return; }
-    if (e.target.closest("nav, table, input")) { tracking = false; return; }
-    startX = e.touches[0].clientX;
-    startY = e.touches[0].clientY;
-    tracking = true;
+    if (e.touches.length !== 1 || e.target.closest("nav, table, input")) { tracking = false; return; }
+    startX = e.touches[0].clientX; startY = e.touches[0].clientY; tracking = true;
   }, { passive: true });
-
   main.addEventListener("touchend", e => {
     if (!tracking) return;
     tracking = false;
     const dx = e.changedTouches[0].clientX - startX;
     const dy = e.changedTouches[0].clientY - startY;
-    // Only act on a deliberate, mostly-horizontal swipe (lets vertical scrolling pass through)
-    if (Math.abs(dx) < THRESHOLD) return;
-    if (Math.abs(dx) < Math.abs(dy) * 1.5) return;
-    moveTab(dx < 0 ? 1 : -1);   // swipe left → next tab, right → previous
+    if (Math.abs(dx) < THRESHOLD || Math.abs(dx) < Math.abs(dy) * 1.5) return;
+    moveTab(dx < 0 ? 1 : -1);
   }, { passive: true });
 })();
 
-/* ============ HELPERS ============ */
-function timeAgo(dateStr) {
-  const d = new Date(dateStr); if (isNaN(d)) return "";
-  const mins = Math.floor((Date.now() - d) / 60000);
-  if (mins < 1) return "just now";
-  if (mins < 60) return mins + "m ago";
-  const hrs = Math.floor(mins / 60);
-  if (hrs < 24) return hrs + "h ago";
-  return Math.floor(hrs / 24) + "d ago";
-}
-function stripHtml(s) { const t = document.createElement("div"); t.innerHTML = s || ""; return t.textContent.trim(); }
-
-function fetchWithTimeout(u, ms = 8000) {
-  const ctrl = new AbortController();
-  const t = setTimeout(() => ctrl.abort(), ms);
-  return fetch(u, { signal: ctrl.signal }).finally(() => clearTimeout(t));
-}
+/* ============ NEWS ============ */
+const news = {};   // key -> { items } | { error: true }
 
 function parseFeedXml(xmlText) {
   const xml = new DOMParser().parseFromString(xmlText, "text/xml");
   if (xml.querySelector("parsererror")) throw new Error("bad xml");
-  // RSS <item> or Atom <entry>
   let nodes = [...xml.querySelectorAll("item")];
   if (!nodes.length) nodes = [...xml.querySelectorAll("entry")];
   if (!nodes.length) throw new Error("no items");
   return nodes.slice(0, 15).map(it => {
     const get = tag => it.querySelector(tag)?.textContent?.trim() || "";
-    // Atom links live in an attribute
     let link = get("link");
     if (!link) link = it.querySelector("link")?.getAttribute("href") || "";
-    return {
-      title: get("title"),
-      link,
-      desc: stripHtml(get("description") || get("summary")),
-      date: get("pubDate") || get("published") || get("updated")
-    };
+    return { title: stripHtml(get("title")), link, date: get("pubDate") || get("published") || get("updated") };
   });
 }
-
 async function fetchFeed(url) {
   let lastErr;
+  try {
+    const r = await fetchWithTimeout(RSS2JSON(url), 8000);
+    const j = await r.json();
+    if (j.status === "ok" && j.items && j.items.length) {
+      return j.items.map(it => ({
+        title: stripHtml(it.title),
+        link: it.link,
+        // rss2json gives "YYYY-MM-DD HH:MM:SS" in UTC
+        date: it.pubDate ? it.pubDate.replace(" ", "T") + "Z" : ""
+      }));
+    }
+    lastErr = new Error(j.message || "rss2json empty");
+  } catch (e) { lastErr = e; }
   for (const p of CORS_PROXIES) {
     try {
       const r = await fetchWithTimeout(p.build(url));
       if (!r.ok) { lastErr = new Error("HTTP " + r.status); continue; }
-      let xmlText;
-      if (p.mode === "wrapped") {
-        const j = await r.json();
-        xmlText = j.contents;
-      } else {
-        xmlText = await r.text();
-      }
+      const xmlText = await readProxy(r, p.mode);
       if (!xmlText || xmlText.length < 100) { lastErr = new Error("empty"); continue; }
       const items = parseFeedXml(xmlText);
       if (items.length) return items;
@@ -530,26 +584,45 @@ async function fetchFeed(url) {
   }
   throw lastErr || new Error("all proxies failed");
 }
-
-function renderNews(id, items, lead, label) {
-  const el = document.getElementById(id);
-  if (!items.length) { el.innerHTML = `<div class="error">No items right now.</div>`; return; }
-  el.innerHTML = items.map((it, i) => `
-    <a class="card ${lead && i === 0 ? "lead" : ""}" href="${it.link}" target="_blank" rel="noopener">
-      <div class="card-title">${it.title}</div>
-      ${it.desc ? `<div class="card-desc">${it.desc}</div>` : ""}
-      <div class="card-meta"><span>${label}</span>${it.date ? `<span>· ${timeAgo(it.date)}</span>` : ""}</div>
-    </a>`).join("");
+function newsRow(it, sourceName) {
+  const meta = [sourceName, timeAgo(it.date)].filter(Boolean).join(" · ");
+  return `<a class="row" href="${esc(it.link)}" target="_blank" rel="noopener">
+      <div class="row-body"><div class="row-title">${esc(it.title)}</div>${meta ? `<div class="row-time">${esc(meta)}</div>` : ""}</div>
+      <span class="ext" aria-hidden="true">↗</span>
+    </a>`;
 }
-
-async function loadNews(key, id, label) {
-  const el = document.getElementById(id);
-  try {
-    const items = await fetchFeed(FEEDS[key].url);
-    renderNews(id, items, FEEDS[key].lead, label);
-  } catch (e) {
-    el.innerHTML = `<div class="error">Couldn't load feed.<br><a href="${FEEDS[key].url}" target="_blank">Open source feed →</a></div>`;
-  }
+function renderNews() {
+  const keys = Object.keys(FEEDS);
+  // Full tab: a block per source
+  $("news-feed").innerHTML = keys.map(k => {
+    const f = FEEDS[k], s = news[k];
+    let body;
+    if (!s) body = LOADING;
+    else if (s.error) body = `<div class="error">Didn't load. Tap ↻ to retry.</div>`;
+    else body = s.items.slice(0, NEWS_PER_SOURCE).map(it => newsRow(it, "")).join("");
+    return `<div class="sub-label"><span>${f.name}</span><a href="${f.site}" target="_blank" rel="noopener">More ↗</a></div>${body}`;
+  }).join("");
+  // Today window: the top story from each source
+  $("ov-news").innerHTML = keys.map(k => {
+    const f = FEEDS[k], s = news[k];
+    if (!s) return "";
+    if (s.error) return `<div class="error">${f.name} didn't load.</div>`;
+    return s.items[0] ? newsRow(s.items[0], f.name) : "";
+  }).join("") || LOADING;
+  const loaded = keys.filter(k => news[k] && !news[k].error).length;
+  const done = keys.filter(k => news[k]).length;
+  $("ov-news-sum").textContent = done === keys.length ? `${loaded}/${keys.length} sources` : "";
+  $("news-stamp").textContent = done === keys.length ? `Updated ${hhmm(new Date())}` : "";
+}
+function loadNews() {
+  Object.keys(FEEDS).forEach(k => {
+    delete news[k];
+    fetchFeed(FEEDS[k].url)
+      .then(items => { news[k] = { items }; })
+      .catch(() => { news[k] = { error: true }; })
+      .finally(renderNews);
+  });
+  renderNews();
 }
 
 /* ============ WEATHER (Open-Meteo, no key) ============ */
@@ -561,86 +634,99 @@ const WMO = {
   80:["🌦️","Showers"],81:["🌧️","Showers"],82:["⛈️","Heavy showers"],
   85:["🌨️","Snow showers"],86:["❄️","Snow showers"],95:["⛈️","Thunderstorm"],96:["⛈️","Storm w/ hail"],99:["⛈️","Storm w/ hail"]
 };
-function wx(code){ return WMO[code] || ["🌡️","—"]; }
+function wx(code) { return WMO[code] || ["🌡️","—"]; }
+
+function daylightHtml(sunrise, sunset, nextRise) {
+  const now = new Date();
+  const dur = ms => {
+    const m = Math.max(0, Math.round(ms / 60000)), h = Math.floor(m / 60);
+    return h > 0 ? `${h}h ${String(m % 60).padStart(2, "0")}m` : `${m}m`;
+  };
+  let value, note;
+  if (now < sunrise)     { value = "Before sunrise"; note = `rises ${hhmm(sunrise)}`; }
+  else if (now > sunset) { value = "After dark";     note = nextRise ? `rises ${hhmm(nextRise)}` : `set ${hhmm(sunset)}`; }
+  else                   { value = dur(sunset - now); note = "daylight left"; }
+  const span = sunset - sunrise;
+  const pct = Math.min(100, Math.max(0, ((now - sunrise) / span) * 100));
+  return `
+    <div class="daylight">
+      <div class="dl-head"><span class="dl-value">🌇 ${value}</span><span class="dl-note">${note}</span></div>
+      <div class="dl-bar" role="img" aria-label="Daylight elapsed ${Math.round(pct)}%">
+        <div class="elapsed" style="width:${pct}%"></div>
+        <div class="now" style="left:calc(${pct}% - 1px)"></div>
+      </div>
+      <div class="dl-ends"><span>↑ ${hhmm(sunrise)}</span><span>${dur(span)} total</span><span>↓ ${hhmm(sunset)}</span></div>
+    </div>`;
+}
+
+function renderWeather(d) {
+  const c = d.current, [ci, cd] = wx(c.weather_code);
+  const nowIdx = Math.max(0, d.hourly.time.findIndex(t => new Date(t) > new Date()) - 1);
+  const sunrise = new Date(d.daily.sunrise[0]);
+  const sunset  = new Date(d.daily.sunset[0]);
+  const nextRise = d.daily.sunrise[1] ? new Date(d.daily.sunrise[1]) : null;
+  const hi = Math.round(d.daily.temperature_2m_max[0]), lo = Math.round(d.daily.temperature_2m_min[0]);
+  const rainMax = d.daily.precipitation_probability_max[0];
+
+  const nowBlock = cls => `
+    <div class="wx-now ${cls}">
+      <div>
+        <div class="wx-temp">${Math.round(c.temperature_2m)}°</div>
+        <div class="wx-desc">${cd} · feels ${Math.round(c.apparent_temperature)}°</div>
+      </div>
+      <div class="wx-icon">${ci}</div>
+    </div>`;
+
+  // Today window: now, today in fixed 3-hour slots (past ones dimmed), daylight
+  const todayStr = d.daily.time[0];
+  const curHour = new Date().getHours();
+  let strip = "";
+  [6, 9, 12, 15, 18, 21].forEach(h => {
+    const i = d.hourly.time.indexOf(`${todayStr}T${String(h).padStart(2, "0")}:00`);
+    if (i < 0) return;
+    const [e] = wx(d.hourly.weather_code[i]);
+    const state = curHour >= h + 3 ? "past" : curHour >= h ? "cur" : "";
+    strip += `<div class="${state}"><div class="h">${String(h).padStart(2, "0")}</div><div class="e">${e}</div><div class="t">${Math.round(d.hourly.temperature_2m[i])}°</div><div class="r">${d.hourly.precipitation_probability[i]}%</div></div>`;
+  });
+  $("ov-wx").innerHTML = nowBlock("compact") + `<div class="strip">${strip}</div>` + daylightHtml(sunrise, sunset, nextRise);
+  $("ov-wx-sum").textContent = `${hi}° / ${lo}° · ${rainMax}% rain`;
+
+  // Full tab
+  let hourlyRows = "";
+  for (let i = nowIdx; i < nowIdx + 8 && i < d.hourly.time.length; i++) {
+    const [e] = wx(d.hourly.weather_code[i]);
+    hourlyRows += `<tr><td>${hhmm(new Date(d.hourly.time[i]))}</td><td class="wx-em">${e}</td><td>${Math.round(d.hourly.temperature_2m[i])}°</td><td>${d.hourly.precipitation_probability[i]}%</td></tr>`;
+  }
+  let dailyRows = "";
+  d.daily.time.forEach((t, i) => {
+    const [e] = wx(d.daily.weather_code[i]);
+    const day = i === 0 ? "Today" : new Date(t).toLocaleDateString("en-GB", { weekday: "short" });
+    dailyRows += `<tr><td>${day}</td><td class="wx-em">${e}</td><td>${Math.round(d.daily.temperature_2m_max[i])}° <span class="lo">${Math.round(d.daily.temperature_2m_min[i])}°</span></td><td>${d.daily.precipitation_probability_max[i]}%</td></tr>`;
+  });
+  $("wx").innerHTML = nowBlock("") + `
+    <div class="wx-stats">
+      <span>💨 <b>${Math.round(c.wind_speed_10m)}</b> km/h</span>
+      <span>💧 <b>${c.relative_humidity_2m}%</b></span>
+    </div>
+    ${daylightHtml(sunrise, sunset, nextRise)}
+    <div class="sub-label"><span>Next 8 hours</span></div>
+    <div class="table-wrap"><table class="wx"><thead><tr><th>Time</th><th></th><th>Temp</th><th>Rain</th></tr></thead><tbody>${hourlyRows}</tbody></table></div>
+    <div class="sub-label"><span>5 days</span></div>
+    <div class="table-wrap"><table class="wx"><thead><tr><th>Day</th><th></th><th>High Low</th><th>Rain</th></tr></thead><tbody>${dailyRows}</tbody></table></div>`;
+}
 
 async function loadWeather() {
-  const el = document.getElementById("wx");
+  $("wx").innerHTML = LOADING; $("ov-wx").innerHTML = LOADING; $("ov-wx-sum").textContent = "";
   const url = `https://api.open-meteo.com/v1/forecast?latitude=${LAT}&longitude=${LON}`
     + `&current=temperature_2m,apparent_temperature,weather_code,wind_speed_10m,relative_humidity_2m`
     + `&hourly=temperature_2m,weather_code,precipitation_probability`
     + `&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,sunrise,sunset`
     + `&timezone=Europe/London&forecast_days=5`;
   try {
-    const r = await fetch(url); const d = await r.json();
-    const c = d.current, [ci, cd] = wx(c.weather_code);
-    // next 8 hourly from current hour
-    const nowIdx = d.hourly.time.findIndex(t => new Date(t) > new Date()) - 1;
-    const hStart = Math.max(0, nowIdx);
-    let hourlyRows = "";
-    for (let i = hStart; i < hStart + 8 && i < d.hourly.time.length; i++) {
-      const [hi] = wx(d.hourly.weather_code[i]);
-      const hr = new Date(d.hourly.time[i]).toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"});
-      hourlyRows += `<tr><td>${hr}</td><td class="wx-em">${hi}</td><td>${Math.round(d.hourly.temperature_2m[i])}°</td><td>${d.hourly.precipitation_probability[i]}%</td></tr>`;
-    }
-    let dailyRows = "";
-    d.daily.time.forEach((t, i) => {
-      const [di] = wx(d.daily.weather_code[i]);
-      const day = i === 0 ? "Today" : new Date(t).toLocaleDateString("en-GB",{weekday:"short"});
-      dailyRows += `<tr><td>${day}</td><td class="wx-em">${di}</td><td><b>${Math.round(d.daily.temperature_2m_max[i])}°</b> / ${Math.round(d.daily.temperature_2m_min[i])}°</td><td>${d.daily.precipitation_probability_max[i]}%</td></tr>`;
-    });
-
-    // --- Daylight (remaining) ---
-    const sunrise = new Date(d.daily.sunrise[0]);
-    const sunset  = new Date(d.daily.sunset[0]);
-    const nowT = new Date();
-    const fmt = dt => dt.toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"});
-    const dur = ms => {
-      const m = Math.max(0, Math.round(ms/60000));
-      const h = Math.floor(m/60);
-      return h > 0 ? `${h}h ${m%60}m` : `${m%60}m`;
-    };
-    let daylightHtml;
-    if (nowT < sunrise) {
-      daylightHtml = `<div class="wx-temp" style="font-size:1.6rem">Not up yet</div>
-        <div class="wx-desc">Sunrise ${fmt(sunrise)} · sets ${fmt(sunset)}</div>`;
-    } else if (nowT > sunset) {
-      // remaining daylight for tomorrow, if we have it
-      const nextRise = d.daily.sunrise[1] ? new Date(d.daily.sunrise[1]) : null;
-      daylightHtml = `<div class="wx-temp" style="font-size:1.6rem">After dark</div>
-        <div class="wx-desc">Set ${fmt(sunset)}${nextRise ? ` · rises ${fmt(nextRise)}` : ""}</div>`;
-    } else {
-      const remaining = dur(sunset - nowT);
-      daylightHtml = `<div class="wx-temp" style="font-size:1.9rem">${remaining}</div>
-        <div class="wx-desc">of daylight left · sunset ${fmt(sunset)}</div>`;
-    }
-    el.innerHTML = `
-      <div class="wx-now">
-        <div class="wx-top">
-          <div>
-            <div class="wx-temp">${Math.round(c.temperature_2m)}°</div>
-            <div class="wx-desc">${cd} · feels ${Math.round(c.apparent_temperature)}°</div>
-          </div>
-          <div class="wx-icon">${ci}</div>
-        </div>
-        <div class="wx-stats">
-          <span>💨 <b>${Math.round(c.wind_speed_10m)}</b> km/h</span>
-          <span>💧 <b>${c.relative_humidity_2m}%</b></span>
-        </div>
-      </div>
-      <div class="wx-now" style="display:flex;align-items:center;gap:14px">
-        <div class="wx-icon" style="font-size:2.2rem">🌇</div>
-        <div>${daylightHtml}</div>
-      </div>
-      <div class="sec-title" style="margin-top:8px">Next hours</div>
-      <div class="card" style="padding:6px 12px">
-        <table class="wx"><thead><tr><th>Time</th><th></th><th>Temp</th><th>Rain</th></tr></thead><tbody>${hourlyRows}</tbody></table>
-      </div>
-      <div class="sec-title" style="margin-top:16px">5-day</div>
-      <div class="card" style="padding:6px 12px">
-        <table class="wx"><thead><tr><th>Day</th><th></th><th>High / Low</th><th>Rain</th></tr></thead><tbody>${dailyRows}</tbody></table>
-      </div>`;
+    renderWeather(await (await fetch(url)).json());
   } catch (e) {
-    el.innerHTML = `<div class="error">Couldn't load weather.</div>`;
+    const msg = `<div class="error">Weather didn't load. Tap ↻ to retry.</div>`;
+    $("wx").innerHTML = msg; $("ov-wx").innerHTML = msg;
   }
 }
 
@@ -650,27 +736,24 @@ const CAL_KEY = "dashboard_ics_url";
 function getCalUrl() { try { return localStorage.getItem(CAL_KEY) || ""; } catch (e) { return ""; } }
 
 function calSettingsHtml(prefill) {
-  return `<div class="cal-note" style="text-align:left">
-      <b>Connect your calendar</b><br><br>
-      In Google Calendar (on desktop): Settings → click your calendar in the left list →
-      scroll to <b>Secret address in iCal format</b> → copy that link.<br>
-      Apple/Outlook calendars also give a public/shared <b>.ics</b> link.<br><br>
-      Paste it here — it's saved on this device only:
-      <input id="ics-input" type="url" placeholder="https://calendar.google.com/…/basic.ics"
-        value="${prefill || ""}"
-        style="width:100%;margin-top:10px;padding:10px;border-radius:8px;border:1px solid var(--line);background:var(--bg);color:var(--text);font-size:.85rem" />
-      <div style="display:flex;gap:8px;margin-top:10px">
-        <button id="ics-save" class="refresh" style="margin:0;flex:1;justify-content:center;background:var(--accent);color:#fff;border-color:var(--accent)">Save & load</button>
-        ${prefill ? `<button id="ics-clear" class="refresh" style="margin:0">Remove</button>` : ""}
+  return `<div class="cal-form">
+      <p>Paste an iCal (.ics) link. It stays on this device.</p>
+      <input id="ics-input" class="field" type="url" placeholder="https://…/basic.ics" value="${esc(prefill || "")}" />
+      <div class="btn-row">
+        <button id="ics-save" class="btn">Save</button>
+        ${prefill ? `<button id="ics-clear" class="btn ghost">Remove</button>` : ""}
       </div>
+      <details>
+        <summary>Where to find the link</summary>
+        <div><b>Google:</b> Settings → your calendar → Secret address in iCal format.<br>
+        <b>Apple:</b> share the calendar as Public, copy the link, change <span class="mono">webcal://</span> to <span class="mono">https://</span>.</div>
+      </details>
     </div>`;
 }
-
 function wireCalSettings() {
-  const save = document.getElementById("ics-save");
-  const clear = document.getElementById("ics-clear");
+  const save = $("ics-save"), clear = $("ics-clear");
   if (save) save.onclick = () => {
-    const v = document.getElementById("ics-input").value.trim();
+    const v = $("ics-input").value.trim();
     if (!v) return;
     try { localStorage.setItem(CAL_KEY, v); } catch (e) {}
     loadCalendar();
@@ -680,40 +763,22 @@ function wireCalSettings() {
     loadCalendar();
   };
 }
+function showCalSettings(url) { $("cal").innerHTML = calSettingsHtml(url); wireCalSettings(); }
 
-async function loadCalendar() {
-  const el = document.getElementById("cal");
-  const url = getCalUrl();
-  if (!url) { el.innerHTML = calSettingsHtml(""); wireCalSettings(); return; }
-  el.innerHTML = `<div class="loading"><div class="spinner"></div>Loading calendar…</div>`;
-  try {
-    const text = await fetchIcs(url);
-    const events = parseICS(text);
-    renderCalendar(events, url);
-  } catch (e) {
-    el.innerHTML = `<div class="cal-note">Couldn't load that calendar. Make sure the link is the
-      <b>public/secret iCal (.ics)</b> address and is reachable.</div>` + calSettingsHtml(url);
-    wireCalSettings();
-  }
-}
-
-// Reuse the same proxy chain the news feeds use.
 async function fetchIcs(url) {
   let lastErr;
   for (const p of CORS_PROXIES) {
     try {
       const r = await fetchWithTimeout(p.build(url));
       if (!r.ok) { lastErr = new Error("HTTP " + r.status); continue; }
-      let text = p.mode === "wrapped" ? (await r.json()).contents : await r.text();
+      const text = await readProxy(r, p.mode);
       if (text && text.indexOf("BEGIN:VCALENDAR") !== -1) return text;
       lastErr = new Error("not ics");
     } catch (e) { lastErr = e; }
   }
   throw lastErr || new Error("all proxies failed");
 }
-
 function parseICS(text) {
-  // Unfold folded lines (iCal wraps long lines with CRLF + space/tab)
   text = text.replace(/\r\n[ \t]/g, "").replace(/\n[ \t]/g, "");
   const out = []; const blocks = text.split("BEGIN:VEVENT").slice(1);
   const now = new Date(); const todayStart = new Date(now.toDateString());
@@ -736,28 +801,67 @@ function icsDate(s) {
   const y=+s.slice(0,4), mo=+s.slice(4,6)-1, da=+s.slice(6,8), h=+s.slice(9,11), mi=+s.slice(11,13);
   return utc ? new Date(Date.UTC(y,mo,da,h,mi)) : new Date(y,mo,da,h,mi);
 }
+function eventRow(ev, timeLabel) {
+  const past = !ev.allDay && ev.date < new Date() && ev.date.toDateString() === new Date().toDateString();
+  return `<div class="event ${past ? "past" : ""}"><div class="event-time">${timeLabel}</div><div class="event-title">${esc(ev.summary)}</div></div>`;
+}
+const evTime = ev => ev.allDay ? "All day" : hhmm(ev.date);
+
 function renderCalendar(events, url) {
-  const el = document.getElementById("cal");
-  const manage = `<div style="text-align:center;margin-top:16px">
-    <button id="ics-manage" class="refresh">⚙ Change calendar link</button></div>`;
-  if (!events.length) {
-    el.innerHTML = `<div class="cal-note">No events in the next 2 weeks.</div>` + manage;
-    document.getElementById("ics-manage").onclick = () => { el.innerHTML = calSettingsHtml(url); wireCalSettings(); };
+  const todayKey = new Date().toDateString();
+  const tomorrowKey = new Date(Date.now() + 864e5).toDateString();
+  // Full tab
+  let html = "", curDay = "";
+  events.forEach(ev => {
+    const k = ev.date.toDateString();
+    if (k !== curDay) {
+      const pre = k === todayKey ? "Today · " : k === tomorrowKey ? "Tomorrow · " : "";
+      html += `<div class="cal-day">${pre}${ev.date.toLocaleDateString("en-GB",{weekday:"short",day:"numeric",month:"short"})}</div>`;
+      curDay = k;
+    }
+    html += eventRow(ev, evTime(ev));
+  });
+  if (!events.length) html = `<div class="note">Nothing in the next two weeks.</div>`;
+  $("cal").innerHTML = html + `<button id="ics-manage" class="text-link">Change calendar link</button>`;
+  $("ics-manage").onclick = () => showCalSettings(url);
+  $("cal-count").textContent = events.length ? events.length + " events" : "";
+
+  // Today window: today's events, or the next one if today is clear
+  const today = events.filter(ev => ev.date.toDateString() === todayKey);
+  const left = today.filter(ev => ev.allDay || ev.date >= new Date()).length;
+  if (today.length) {
+    $("ov-cal").innerHTML = today.map(ev => eventRow(ev, evTime(ev))).join("");
+    $("ov-cal-sum").textContent = `${left} of ${today.length} left`;
+  } else {
+    const next = events[0];
+    $("ov-cal").innerHTML = `<div class="note">Nothing on today.</div>` + (next
+      ? `<div class="event"><div class="event-time">${next.date.toLocaleDateString("en-GB", { weekday: "short", day: "numeric" })}</div>
+           <div class="event-title">${esc(next.summary)} <span class="muted mono">${next.allDay ? "" : hhmm(next.date)}</span></div></div>`
+      : "");
+    $("ov-cal-sum").textContent = next ? "Next up" : "";
+  }
+}
+
+async function loadCalendar() {
+  const url = getCalUrl();
+  $("cal-count").textContent = ""; $("ov-cal-sum").textContent = "";
+  if (!url) {
+    showCalSettings("");
+    $("ov-cal").innerHTML = `<button class="action" data-goto="calendar"><span>Connect a calendar</span><span>→</span></button>`;
     return;
   }
-  let html = ""; let curDay = "";
-  events.forEach(ev => {
-    const dayKey = ev.date.toLocaleDateString("en-GB",{weekday:"long",day:"numeric",month:"long"});
-    if (dayKey !== curDay) { html += `<div class="cal-day">${dayKey}</div>`; curDay = dayKey; }
-    const time = ev.allDay ? "All day" : ev.date.toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"});
-    html += `<div class="event"><div class="event-time">${time}</div><div class="event-title">${ev.summary}</div></div>`;
-  });
-  el.innerHTML = html + manage;
-  document.getElementById("ics-manage").onclick = () => { el.innerHTML = calSettingsHtml(url); wireCalSettings(); };
+  $("cal").innerHTML = LOADING; $("ov-cal").innerHTML = LOADING;
+  try {
+    renderCalendar(parseICS(await fetchIcs(url)), url);
+  } catch (e) {
+    $("cal").innerHTML = `<div class="error">Calendar didn't load. Check the link is an iCal (.ics) address.</div>` + calSettingsHtml(url);
+    wireCalSettings();
+    $("ov-cal").innerHTML = `<div class="error">Calendar didn't load. Tap ↻ to retry.</div>`;
+  }
 }
 
 /* ============ HABITS ============ */
-// Same storage key as the standalone tracker, so existing data carries over on this browser.
+// Same storage key as the standalone tracker, so existing data carries over.
 const HB_KEY = "habits_v1";
 function hbLoad() { try { return JSON.parse(localStorage.getItem(HB_KEY)) || []; } catch (e) { return []; } }
 function hbSave(h) { try { localStorage.setItem(HB_KEY, JSON.stringify(h)); } catch (e) {} }
@@ -768,95 +872,103 @@ function hbDayKey(d) {
 }
 const HB_TODAY = hbDayKey(new Date());
 function hbDaysAgo(n) { const d = new Date(); d.setDate(d.getDate() - n); return hbDayKey(d); }
-
 function hbStreak(done) {
   const set = new Set(done);
   let streak = 0;
-  let start = set.has(HB_TODAY) ? 0 : 1;
+  const start = set.has(HB_TODAY) ? 0 : 1;
   if (start === 1 && !set.has(hbDaysAgo(1))) return 0;
-  for (let i = start; i < 400; i++) {
-    if (set.has(hbDaysAgo(i))) streak++; else break;
-  }
+  for (let i = start; i < 400; i++) { if (set.has(hbDaysAgo(i))) streak++; else break; }
   return streak;
 }
-function hbEscape(s) { return s.replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
 
-function hbRender() {
-  const list = document.getElementById("hb-list");
-  const summary = document.getElementById("hb-summary");
-  if (!hbHabits.length) {
-    list.innerHTML = `<div class="empty">No habits yet.<br>Add one below to start a streak.</div>`;
-    summary.textContent = "";
-    return;
-  }
-  const doneToday = hbHabits.filter(h => h.done.includes(HB_TODAY)).length;
-  summary.innerHTML = `<b>${doneToday}</b> of <b>${hbHabits.length}</b> done today`;
-  list.innerHTML = hbHabits.map((h, idx) => {
-    const isDone = h.done.includes(HB_TODAY);
-    const streak = hbStreak(h.done);
+// One row component, used on both the Habits tab (with grid + delete) and Today (compact)
+function habitRow(h, idx, full) {
+  const isDone = h.done.includes(HB_TODAY);
+  const streak = hbStreak(h.done);
+  let grid = "";
+  if (full) {
     const doneSet = new Set(h.done);
     let cells = "";
     for (let i = 27; i >= 0; i--) {
-      const k = hbDaysAgo(i);
-      const cls = (doneSet.has(k) ? "on " : "") + (i === 0 ? "today" : "");
-      cells += `<div class="cell ${cls}"></div>`;
+      cells += `<div class="cell ${doneSet.has(hbDaysAgo(i)) ? "on" : ""} ${i === 0 ? "today" : ""}"></div>`;
     }
-    return `
-      <div class="habit">
-        <div class="habit-top">
-          <div class="check ${isDone ? "done" : ""}" data-hb-toggle="${idx}">✓</div>
-          <div class="habit-info">
-            <div class="habit-name">${hbEscape(h.name)}</div>
-            <div class="habit-streak">
-              ${streak > 0 ? `<span class="flame">🔥</span> ${streak}-day streak` : "No streak yet"}
-            </div>
-          </div>
-          <button class="del" data-hb-del="${idx}" title="Delete">✕</button>
-        </div>
-        <div class="grid">${cells}</div>
-        <div class="grid-label">Last 4 weeks</div>
-      </div>`;
-  }).join("");
+    grid = `<div class="grid" title="Last 28 days">${cells}</div>`;
+  }
+  return `
+    <div class="habit ${isDone ? "done" : ""}">
+      <div class="habit-top" role="button" tabindex="0" aria-pressed="${isDone}" data-hb-toggle="${idx}">
+        <span class="check" aria-hidden="true">✓</span>
+        <span class="habit-name">${esc(h.name)}</span>
+        <span class="habit-streak ${streak > 0 ? "on" : ""}">${streak > 0 ? `🔥 ${streak}d` : "—"}</span>
+        ${full ? `<button class="del" data-hb-del="${idx}" aria-label="Delete ${esc(h.name)}">✕</button>` : ""}
+      </div>
+      ${grid}
+    </div>`;
 }
 
-document.getElementById("hb-list").addEventListener("click", e => {
-  const toggle = e.target.closest("[data-hb-toggle]");
-  const del = e.target.closest("[data-hb-del]");
-  if (toggle) {
-    const h = hbHabits[+toggle.dataset.hbToggle];
-    const i = h.done.indexOf(HB_TODAY);
-    if (i === -1) h.done.push(HB_TODAY); else h.done.splice(i, 1);
-    hbSave(hbHabits); hbRender();
-  } else if (del) {
-    const h = hbHabits[+del.dataset.hbDel];
-    if (confirm(`Delete "${h.name}"? Its history will be lost.`)) {
-      hbHabits.splice(+del.dataset.hbDel, 1);
-      hbSave(hbHabits); hbRender();
-    }
+function hbRender() {
+  const n = hbHabits.length;
+  const doneToday = hbHabits.filter(h => h.done.includes(HB_TODAY)).length;
+  const sum = n ? `${doneToday}/${n} done` : "";
+  $("hb-summary").textContent = sum;
+  $("ov-hb-sum").textContent = sum;
+  if (!n) {
+    $("hb-list").innerHTML = `<div class="note">No habits yet.</div>`;
+    $("ov-habits").innerHTML = `<button class="action" data-goto="habits"><span>Add your first habit</span><span>→</span></button>`;
+    return;
   }
+  $("hb-list").innerHTML = hbHabits.map((h, i) => habitRow(h, i, true)).join("");
+  // Today: still-to-do first, done ones sink to the bottom
+  const order = hbHabits.map((h, i) => i)
+    .sort((a, b) => hbHabits[a].done.includes(HB_TODAY) - hbHabits[b].done.includes(HB_TODAY) || a - b);
+  $("ov-habits").innerHTML = order.map(i => habitRow(hbHabits[i], i, false)).join("");
+}
+
+function hbToggle(idx) {
+  const h = hbHabits[idx]; if (!h) return;
+  const i = h.done.indexOf(HB_TODAY);
+  if (i === -1) h.done.push(HB_TODAY); else h.done.splice(i, 1);
+  hbSave(hbHabits); hbRender();
+}
+function onHabitClick(e) {
+  const del = e.target.closest("[data-hb-del]");
+  if (del) {
+    e.stopPropagation();
+    const idx = +del.dataset.hbDel, h = hbHabits[idx];
+    if (confirm(`Delete "${h.name}" and its history?`)) { hbHabits.splice(idx, 1); hbSave(hbHabits); hbRender(); }
+    return;
+  }
+  const t = e.target.closest("[data-hb-toggle]");
+  if (t) hbToggle(+t.dataset.hbToggle);
+}
+function onHabitKey(e) {
+  const t = e.target.closest("[data-hb-toggle]");
+  if (t && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); hbToggle(+t.dataset.hbToggle); }
+}
+["hb-list", "ov-habits"].forEach(id => {
+  $(id).addEventListener("click", onHabitClick);
+  $(id).addEventListener("keydown", onHabitKey);
 });
 function hbAdd() {
-  const input = document.getElementById("hb-new");
+  const input = $("hb-new");
   const name = input.value.trim();
   if (!name) return;
   hbHabits.push({ name, done: [] });
   hbSave(hbHabits); input.value = ""; hbRender();
 }
-document.getElementById("hb-add").addEventListener("click", hbAdd);
-document.getElementById("hb-new").addEventListener("keydown", e => { if (e.key === "Enter") hbAdd(); });
+$("hb-add").addEventListener("click", hbAdd);
+$("hb-new").addEventListener("keydown", e => { if (e.key === "Enter") hbAdd(); });
 
 /* ============ LOAD ALL ============ */
 function loadAll() {
-  loadNews("bbc", "bbc-feed", "BBC News");
-  loadNews("sport", "sport-feed", "BBC Sport");
-  loadNews("ajz", "ajz-feed", "Al Jazeera");
+  loadNews();
   loadWeather();
   loadCalendar();
 }
-document.getElementById("refresh").addEventListener("click", loadAll);
+$("refresh").addEventListener("click", loadAll);
+hbRender();
 loadAll();
 loadQuote();
-hbRender();
 </script>
 </body>
 </html>
