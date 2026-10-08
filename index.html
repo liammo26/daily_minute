@@ -414,10 +414,10 @@ function timeAgo(dateStr) {
   return Math.floor(hrs / 24) + "d";
 }
 function stripHtml(s) { const t = document.createElement("div"); t.innerHTML = s || ""; return t.textContent.trim(); }
-function fetchWithTimeout(u, ms = 8000) {
+function fetchWithTimeout(u, ms = 8000, opts = {}) {
   const ctrl = new AbortController();
   const t = setTimeout(() => ctrl.abort(), ms);
-  return fetch(u, { signal: ctrl.signal }).finally(() => clearTimeout(t));
+  return fetch(u, { ...opts, signal: ctrl.signal }).finally(() => clearTimeout(t));
 }
 const LOADING = `<div class="loading">Loading</div>`;
 async function readProxy(r, mode) {
@@ -746,7 +746,7 @@ function calSettingsHtml(prefill) {
       <details>
         <summary>Where to find the link</summary>
         <div><b>Google:</b> Settings → your calendar → Secret address in iCal format.<br>
-        <b>Apple:</b> share the calendar as Public, copy the link, change <span class="mono">webcal://</span> to <span class="mono">https://</span>.</div>
+        <b>Apple:</b> share the calendar as Public and copy the link (webcal:// links are fine).</div>
       </details>
     </div>`;
 }
@@ -765,18 +765,28 @@ function wireCalSettings() {
 }
 function showCalSettings(url) { $("cal").innerHTML = calSettingsHtml(url); wireCalSettings(); }
 
+// Calendar routes, fastest first. Jina's reader returns the raw .ics in ~1s;
+// allorigins works but can take ~10s, so it gets a longer timeout.
+const ICS_ROUTES = [
+  { build: u => `https://r.jina.ai/${encodeURIComponent(u)}`, mode: "text", ms: 10000, opts: { headers: { "X-Return-Format": "text" } } },
+  { build: u => `https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`, mode: "text", ms: 20000 },
+  { build: u => `https://api.allorigins.win/get?url=${encodeURIComponent(u)}`, mode: "wrapped", ms: 20000 },
+  { build: u => `https://api.codetabs.com/v1/proxy/?quest=${encodeURIComponent(u)}`, mode: "text", ms: 15000 }
+];
 async function fetchIcs(url) {
+  url = url.trim().replace(/^webcal:\/\//i, "https://");   // Apple links start webcal://
   let lastErr;
-  for (const p of CORS_PROXIES) {
+  for (const p of ICS_ROUTES) {
     try {
-      const r = await fetchWithTimeout(p.build(url));
+      const r = await fetchWithTimeout(p.build(url), p.ms, p.opts);
       if (!r.ok) { lastErr = new Error("HTTP " + r.status); continue; }
       const text = await readProxy(r, p.mode);
-      if (text && text.indexOf("BEGIN:VCALENDAR") !== -1) return text;
+      const at = text ? text.indexOf("BEGIN:VCALENDAR") : -1;
+      if (at !== -1) return text.slice(at);
       lastErr = new Error("not ics");
     } catch (e) { lastErr = e; }
   }
-  throw lastErr || new Error("all proxies failed");
+  throw lastErr || new Error("all routes failed");
 }
 function parseICS(text) {
   text = text.replace(/\r\n[ \t]/g, "").replace(/\n[ \t]/g, "");
